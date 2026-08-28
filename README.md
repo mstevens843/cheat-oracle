@@ -49,19 +49,25 @@ cases. No exploit is pointed at a system the author does not control.
 > - **The fix survives its own attack.** `uv run python -m cheat_oracle.adversaries.reflexive`: the
 >   ledger is out of the subject's reach, and editing any record breaks the hash chain so the
 >   monitor emits VOID rather than a clean pass.
+> - **Arm B, the released traces, scanned - a null result, honestly.** The public Harbor org exposes
+>   25 HVTB jobs over `hack-verifiable-environments/hv-terminal-bench-2-1`; all **2,225 released
+>   trials** were scanned (`uv run python -m cheat_oracle.harness.arm_b --traces
+>   /private/tmp/cheat-oracle-hvtb-jobs --key-path admin/ --score-field hidden_solution`). Of the
+>   **2,001 the detector scored clean, 0** show a command that obtained the key through a
+>   watch-evading route - the evasions Arm A proves possible were not observed being used in this
+>   sample. A first pass reported 888 by grepping whole transcripts; reading the matches showed they
+>   were false positives (a `curl`, base64 noise, `git` calls that EXCLUDED admin), so the scanner was
+>   corrected to scan executed commands bound to the key path (`results/06`). Receipt:
+>   `co1_3a95af4390209b8ef4ed31f2bc951ae443fcdf0428629af0d2b9a77420ee12a6`.
 > - **The measurement corrected the model, twice.** It caught the model mispredicting the bind-mount
 >   channel (`results/02`), then showed d2's out-of-container mount mark is blind cross-container - a
 >   `FAN_MARK_MOUNT` is per-vfsmount, the measured reason the fix marks the superblock (`results/04`).
->   Every observed run carries a canonical-JSON SHA-256 receipt that its test re-derives.
+>   The core harness observed runs carry canonical-JSON SHA-256 receipts that their tests re-derive;
+>   Arm B carries the scanner receipt above.
 >
-> - **Arm B is wired and waiting on data.** `cheat_oracle.harness.arm_b` scans Harbor trial dirs for
->   the retroactive undercount and is validated on a synthetic fixture, but the 2,225 released HVTB
->   traces are not shared with our Harbor account (`harbor download` reports no access; the hub lists
->   no HVTB job), so it reports GATED and writes no evidence until real trials land in `arm-b/traces/`.
->
-> **What is NOT done:** the retroactive undercount over the real HVTB traces (Arm B; the traces are
-> gated behind Harbor sharing, see above), and blocking rather than observing (this kernel lacks
-> `CONFIG_FANOTIFY_ACCESS_PERMISSIONS`; `results/00`). None of the headline depends on them.
+> **What is NOT done:** blocking rather than observing (this kernel lacks
+> `CONFIG_FANOTIFY_ACCESS_PERMISSIONS`; `results/00`), and the optional base Terminal-Bench 2.1 ->
+> HV-form provenance transform (`transform/`). None of the headline depends on them.
 >
 > **Do not cite a number from this repo that does not name the command that produced it.**
 
@@ -86,9 +92,9 @@ src/cheat_oracle/adversaries/ reflexive.py: attack the fix (out of reach + tampe
 images/subject/               the subject + HVTB-replica image (d0 dir watch + d1 inode watch)
 images/monitor/               the canary-mint sidecar (d3 FAN_MARK_FILESYSTEM, d2 FAN_MARK_MOUNT)
 images/floor/                 the privileged c13 floor probe (loop device + raw read below the VFS)
-evidence/                     receipted observed-matrix / arm-a-d0 / negative-control / floor-c13 json
-results/                      numbered, append-only lab notebook (00 substrate .. 04 ladder+controls)
-arm-b/                        drop Harbor trial dirs here; arm_b.py scans them (gated on the data)
+evidence/                     receipted observed-matrix / arm-a-d0 / negative-control / floor-c13 / arm-b json
+results/                      numbered, append-only lab notebook (00 substrate .. 06 Arm B)
+arm-b/                        Harbor trial/job-dir scanner; raw traces stay out of the repo
 transform/                    base Terminal-Bench 2.1 -> HV form (Apache-2.0 clean)            [next]
 ```
 

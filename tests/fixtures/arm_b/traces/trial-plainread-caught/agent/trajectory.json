@@ -1,1 +1,1 @@
-{"steps":[{"cmd":"cat admin/key.txt"}]}
+{"schema_version": "ATIF-v1.7", "steps": [{"step_id": 1, "source": "agent", "tool_calls": [{"function_name": "Bash", "arguments": {"command": "cat admin/key.txt"}}]}]}

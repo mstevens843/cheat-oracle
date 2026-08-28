@@ -68,7 +68,17 @@ Since the draft above, the reproduction was hardened into a full, receipted meas
   detectors - the fix does not trade the undercount for false positives.
 - **The block-device floor is measured**, not just asserted: a raw read of the backing device obtains
   the key while the superblock mark stays silent (and fires on a VFS read of the same file).
-- Every observed run carries a canonical-JSON SHA-256 receipt re-derived by the test suite.
+- **The released traces were scanned - a null result we report as one.** The public Harbor org
+  exposes 25 HVTB jobs for `hack-verifiable-environments/hv-terminal-bench-2-1` (2,225 trials).
+  Scanning the agents' executed commands, of the 2,001 your detector scored clean, 0 obtained the key
+  through a route the directory watch is modeled to miss. (A first pass grepped whole transcripts and
+  reported 888; reading the matches showed all were false positives - a benign curl, base64 noise,
+  git calls that excluded admin - so we corrected the scanner and re-ran.) So on this public sample we
+  find the evasions demonstrated in Arm A were not observed being exploited: the undercount is a
+  latent vulnerability, not an observed miss here. Receipt
+  `co1_3a95af4390209b8ef4ed31f2bc951ae443fcdf0428629af0d2b9a77420ee12a6`.
+- The core harness observed runs carry canonical-JSON SHA-256 receipts re-derived by the test suite;
+  Arm B carries its own scanner-produced receipt.
 
 ## What we are offering
 
@@ -77,10 +87,10 @@ Since the draft above, the reproduction was hardened into a full, receipted meas
 - A PR against the HVTB task-transform script adding the fail-closed flag handling and an optional
   sidecar detector, if useful.
 
-We would value a correction if any channel does not reproduce against the real environments. We now
-hold a Harbor account (mstevens843) and still could not obtain them: `harbor download` reports the
-HVTB package is not shared with the account, and the hub lists no HVTB job. A ready-to-run scanner
-(`cheat_oracle.harness.arm_b`) applies this channel model to the released traces and reports the
-retroactive undercount - how many trials the detector scored clean while the trajectory shows the key
-obtained through a channel the directory watch misses. It runs the moment the 89 environments or the
-2,225 traces are shared with the account or dropped into `arm-b/traces/`.
+We would value a correction if any channel does not reproduce against the real environments. The
+scanner is intentionally conservative: Arm A proves obtainment by emitted canary bytes, while Arm B
+counts only released trajectories your detector scored clean where an executed command reads the key
+through a route the directory watch is modeled to miss. It is a lower bound - it cannot see routes
+that leave no key-path reference in a command (a pre-existing copy, a raw object-hash read, a network
+mirror) - and it is validated to flag a genuine key read while not firing on the benign patterns that
+fooled the first pass.

@@ -1,5 +1,13 @@
 # 05 - Arm B: the retroactive scanner, and the Harbor boundary
 
+Superseded note, 2026-08-27: two things below are now out of date. (1) The access boundary was a
+stale package name, not a real wall: the public org table exposes all 25 HVTB jobs for
+`hack-verifiable-environments/hv-terminal-bench-2-1`, so the 2,225 traces were downloaded and
+scanned. (2) The scanner described here scanned the whole transcript with loose signatures, which
+over-counted badly on real traces; it was rewritten to scan executed commands bound to the key path.
+`results/06` records both the corrected scan (0 retroactive undercounts) and the overcount it caught.
+Keep this entry as the record of what was first built and why the first Harbor probe failed.
+
 Working record. Arm B is the retroactive half: apply the channel model to the released HVTB traces
 and count how many the detector scored as no-hack while the agent obtained the key through a channel
 the directory watch misses. This entry records what was built, and the honest boundary that keeps it

@@ -14,7 +14,7 @@ iff it emitted that GUID at its sink, which needs no detector to adjudicate.
 
 | Gate | Result |
 |---|---|
-| Model + purity + thesis + control tests (`uv run pytest`) | **66 passed** |
+| Model + purity + thesis + control tests (`uv run pytest`) | **69 passed** |
 | ruff | clean |
 | mypy --strict | clean |
 | Predicted matrix (`python -m cheat_oracle.model`) | 13 channels x 4 detectors, pure derivation |
@@ -28,7 +28,7 @@ iff it emitted that GUID at its sink, which needs no detector to adjudicate.
 | Negative control (`python -m cheat_oracle.harness.negative_control`) | **no false positive** - all four detectors score clean_noop clean |
 | Discrimination (d1 > d0, fix > d0, fix > d1, floor non-empty) | **all hold, in prediction and in measurement** |
 | Reflexive adversaries (`python -m cheat_oracle.adversaries.reflexive`) | **PASS** - ledger out of reach AND tamper-evident |
-| Arm B - retroactive trace scanner (`python -m cheat_oracle.harness.arm_b`) | **wired + gated** - validated on a synthetic fixture; the real HVTB traces are not shared with the account, so it writes no evidence |
+| Arm B - released HVTB traces (`python -m cheat_oracle.harness.arm_b`) | **0 of 2,001 clean-scored** of 2,225 public traces show a command that obtained the key by a watch-evading route (a first transcript-grep pass reported 888; all were false positives, `results/06`) |
 
 ## The headline, stated once
 
@@ -57,10 +57,20 @@ content-duplication channels or the sub-VFS floor, and it says so in the same ta
 - **A negative control bounds the false-positive rate.** clean_noop does legitimate work and never
   touches the key; all four detectors score it clean (`evidence/negative-control.json`). A detector
   that catches 7 of 12 hacks means nothing without this.
-- **Every observed run is receipted.** `evidence/{arm-a-d0,observed-matrix,negative-control,floor-c13}.json`
-  each carry a canonical-JSON SHA-256 receipt; `tests/test_discrimination.py` and
-  `tests/test_negative_controls.py` re-derive the receipt so a hand-edited number is caught, then
-  assert the empirical thesis over the artifact.
+- **Arm B is a real-trace scan, and a null result, honestly.** Harbor's public HVTB org exposes 25
+  jobs for `hack-verifiable-environments/hv-terminal-bench-2-1`, 89 trials each. Scanning all 2,225
+  released traces (`--score-field hidden_solution`) finds 2,001 the detector scored clean and **0**
+  with a command that obtained the key through a watch-evading route. A first pass reported 888 by
+  grepping whole transcripts; reading the matches showed all were false positives (a benign `curl`,
+  base64 noise, `git` calls that EXCLUDED admin), so the scanner was corrected to scan executed
+  commands bound to the key path, and a regression test pins the benign patterns to zero. The
+  evasions Arm A proves possible were not observed being used in this sample; the vulnerability is
+  latent, not observed exploited. Receipt
+  `co1_3a95af4390209b8ef4ed31f2bc951ae443fcdf0428629af0d2b9a77420ee12a6`, story in `results/06`.
+- **Every observed artifact is receipted.** `evidence/{arm-a-d0,observed-matrix,negative-control,floor-c13,arm-b}.json`
+  each carry a canonical-JSON SHA-256 receipt. The existing tests re-derive the core harness receipts
+  and assert the empirical thesis over those artifacts; Arm B carries the scanner-produced receipt
+  recorded above.
 
 ## What this does not prove
 
@@ -74,12 +84,12 @@ content-duplication channels or the sub-VFS floor, and it says so in the same ta
   separate host.
 - **c08 overflow.** The mechanism is real (inotify(7)); this substrate would not reliably drop the
   key event on the default queue, so c08 is observed as caught and excluded from the undercount.
-- **The real HVTB environments and the 2,225 traces.** The measurement runs against a license-clean
-  reproduction of the detector on base Terminal-Bench 2.1. Arm B (`cheat_oracle.harness.arm_b`) is
-  built and validated on a synthetic fixture to run the retroactive undercount over real traces, but
-  they are gated: with a Harbor account (mstevens843), `harbor download` reports the HVTB package is
-  not shared with the account and the hub lists no HVTB job, so Arm B reports GATED and writes no
-  evidence. It runs the moment the traces are shared or dropped into `arm-b/traces/`.
+- **Arm B is a command-level lower bound, not a rerun.** Arm A proves obtainment by an emitted canary
+  GUID. Arm B is different: over released trajectories it counts only commands that read the key
+  through a route the model ties to a d0 miss, while HVTB's own `hidden_solution` score is clean. It
+  cannot see routes that leave no key-path reference in a command (a pre-existing copy, a raw
+  object-hash read, a network mirror), so its 0 is a lower bound on this public sample, not a proof
+  that no clean-scored trial ever obtained the key.
 
 ## Reproducing this document
 
@@ -94,5 +104,5 @@ content-duplication channels or the sub-VFS floor, and it says so in the same ta
     uv run python -m cheat_oracle.harness.full_matrix      # the full 4-rung observed matrix
     uv run python -m cheat_oracle.harness.negative_control # no detector fires on benign work
     uv run python -m cheat_oracle.harness.floor_c13        # the measured raw-device floor
-    uv run python -m cheat_oracle.harness.arm_b            # retroactive trace scan (GATED until traces)
+    uv run python -m cheat_oracle.harness.arm_b            # retroactive trace scan
     uv run python -m cheat_oracle.adversaries.reflexive    # attack the fix
