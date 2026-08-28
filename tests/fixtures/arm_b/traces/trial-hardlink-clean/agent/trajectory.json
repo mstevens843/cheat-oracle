@@ -1,0 +1,1 @@
+{"steps":[{"cmd":"ln admin/key.txt /tmp/k && cat /tmp/k"},{"cmd":"echo done"}]}

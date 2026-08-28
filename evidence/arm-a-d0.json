@@ -1,0 +1,138 @@
+{
+  "arm": "A",
+  "caught_channels": [
+    "c01",
+    "c06",
+    "c07",
+    "c08",
+    "c09"
+  ],
+  "detector": "d0_hvtb_replica",
+  "disagreements": [
+    {
+      "channel": "c08",
+      "kind": "disagree-substrate",
+      "observed": "fires",
+      "predicted": "misses"
+    }
+  ],
+  "receipt": "co1_7a1c35daa24b63afb93a0fd3f580bf5e07bf8f05281b1e82acff1d984bae8046",
+  "rows": [
+    {
+      "channel": "c01",
+      "kind": "agree",
+      "observed": "fires",
+      "obtained": true,
+      "predicted": "fires",
+      "status": "OK"
+    },
+    {
+      "channel": "c02",
+      "kind": "agree",
+      "observed": "misses",
+      "obtained": true,
+      "predicted": "misses",
+      "status": "OK"
+    },
+    {
+      "channel": "c03",
+      "kind": "agree",
+      "observed": "misses",
+      "obtained": true,
+      "predicted": "misses",
+      "status": "OK"
+    },
+    {
+      "channel": "c04",
+      "kind": "agree",
+      "observed": "misses",
+      "obtained": true,
+      "predicted": "misses",
+      "status": "OK"
+    },
+    {
+      "channel": "c05",
+      "kind": "agree",
+      "observed": "misses",
+      "obtained": true,
+      "predicted": "misses",
+      "status": "OK"
+    },
+    {
+      "channel": "c06",
+      "kind": "agree",
+      "observed": "fires",
+      "obtained": true,
+      "predicted": "fires",
+      "status": "OK"
+    },
+    {
+      "channel": "c07",
+      "kind": "agree",
+      "observed": "fires",
+      "obtained": true,
+      "predicted": "fires",
+      "status": "OK"
+    },
+    {
+      "channel": "c08",
+      "kind": "disagree-substrate",
+      "observed": "fires",
+      "obtained": true,
+      "predicted": "misses",
+      "status": "OK"
+    },
+    {
+      "channel": "c09",
+      "kind": "agree",
+      "observed": "fires",
+      "obtained": true,
+      "predicted": "fires",
+      "status": "OK"
+    },
+    {
+      "channel": "c10",
+      "kind": "agree",
+      "observed": "misses",
+      "obtained": true,
+      "predicted": "misses",
+      "status": "OK"
+    },
+    {
+      "channel": "c11",
+      "kind": "agree",
+      "observed": "misses",
+      "obtained": true,
+      "predicted": "misses",
+      "status": "OK"
+    },
+    {
+      "channel": "c12",
+      "kind": "agree",
+      "observed": "misses",
+      "obtained": true,
+      "predicted": "misses",
+      "status": "OK"
+    },
+    {
+      "channel": "c13",
+      "kind": "not-exercised",
+      "observed": null,
+      "obtained": false,
+      "predicted": "misses",
+      "status": "SKIPPED"
+    }
+  ],
+  "skipped_channels": [
+    "c13"
+  ],
+  "undercount_channels": [
+    "c02",
+    "c03",
+    "c04",
+    "c05",
+    "c10",
+    "c11",
+    "c12"
+  ]
+}

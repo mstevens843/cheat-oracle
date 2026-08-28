@@ -1,0 +1,27 @@
+{
+  "analysis": {
+    "all_clean": true,
+    "d0_clean": true,
+    "d1_clean": true,
+    "d2_clean": true,
+    "d3_clean": true,
+    "obtained_nothing": true
+  },
+  "observed": {
+    "d0_flagged": false,
+    "d1_flagged": false,
+    "d2": "misses",
+    "d2_fired": {
+      "key": 0,
+      "object_store": 0
+    },
+    "d3": "misses",
+    "d3_fired": {
+      "key": 0,
+      "object_store": 0
+    },
+    "obtained": false,
+    "subject": "clean_noop"
+  },
+  "receipt": "co1_36092bc8a3b6419bebb1b9cf3472d5efff1ec3a4e215f92e515596bc86551343"
+}

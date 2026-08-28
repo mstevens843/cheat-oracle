@@ -1,0 +1,12 @@
+{
+  "channel": "c13",
+  "probe": {
+    "fanotify_fired_on_raw_read": false,
+    "fanotify_fired_on_vfs_read": true,
+    "floor_holds": true,
+    "gated": false,
+    "loop": "/dev/loop0",
+    "obtained_via_raw_device": true
+  },
+  "receipt": "co1_c7db3d49c6cbc083cfc28e2d522d880f22b3ce81f6e2dc8afbd420dd09cc8ffc"
+}

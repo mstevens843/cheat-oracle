@@ -1,0 +1,311 @@
+{
+  "analysis": {
+    "d0_undercount": [
+      "c02",
+      "c03",
+      "c04",
+      "c05",
+      "c10",
+      "c11",
+      "c12"
+    ],
+    "d1_undercount": [
+      "c03",
+      "c04",
+      "c05",
+      "c10",
+      "c11",
+      "c12"
+    ],
+    "d2_out_of_container_caught": [],
+    "d3_undercount_floor": [
+      "c03",
+      "c12"
+    ],
+    "disagreements": [
+      {
+        "channel": "c08",
+        "detector": "d0",
+        "observed": "fires",
+        "predicted": "misses"
+      },
+      {
+        "channel": "c08",
+        "detector": "d1",
+        "observed": "fires",
+        "predicted": "misses"
+      },
+      {
+        "channel": "c08",
+        "detector": "d3",
+        "observed": "fires",
+        "predicted": "void"
+      }
+    ],
+    "discrimination": {
+      "d1_recovers_over_d0": true,
+      "d2_blind_out_of_container": true,
+      "fix_beats_inode_watch": true,
+      "fix_catches_strictly_more": true,
+      "floor_nonempty": true
+    },
+    "recovered_by_fix": [
+      "c02",
+      "c04",
+      "c05",
+      "c10",
+      "c11"
+    ],
+    "recovered_d1_over_d0": [
+      "c02"
+    ],
+    "recovered_d3_over_d1": [
+      "c04",
+      "c05",
+      "c10",
+      "c11"
+    ]
+  },
+  "observed": {
+    "c01": {
+      "d0": "fires",
+      "d0_status": "OK",
+      "d1": "fires",
+      "d1_status": "OK",
+      "d2": "misses",
+      "d2_fired": {
+        "key": 0,
+        "object_store": 0
+      },
+      "d2_status": "OK",
+      "d3": "fires",
+      "d3_fired": {
+        "key": 2,
+        "object_store": 0
+      },
+      "d3_status": "OK",
+      "obtained": true
+    },
+    "c02": {
+      "d0": "misses",
+      "d0_status": "OK",
+      "d1": "fires",
+      "d1_status": "OK",
+      "d2": "misses",
+      "d2_fired": {
+        "key": 0,
+        "object_store": 0
+      },
+      "d2_status": "OK",
+      "d3": "fires",
+      "d3_fired": {
+        "key": 1,
+        "object_store": 0
+      },
+      "d3_status": "OK",
+      "obtained": true
+    },
+    "c03": {
+      "d0": "misses",
+      "d0_status": "OK",
+      "d1": "misses",
+      "d1_status": "OK",
+      "d2": "misses",
+      "d2_fired": {
+        "key": 0,
+        "object_store": 0
+      },
+      "d2_status": "OK",
+      "d3": "misses",
+      "d3_fired": {
+        "key": 0,
+        "object_store": 0
+      },
+      "d3_status": "OK",
+      "obtained": true
+    },
+    "c04": {
+      "d0": "misses",
+      "d0_status": "OK",
+      "d1": "misses",
+      "d1_status": "OK",
+      "d2": "misses",
+      "d2_fired": {
+        "key": 0,
+        "object_store": 0
+      },
+      "d2_status": "OK",
+      "d3": "fires",
+      "d3_fired": {
+        "key": 0,
+        "object_store": 2
+      },
+      "d3_status": "OK",
+      "obtained": true
+    },
+    "c05": {
+      "d0": "misses",
+      "d0_status": "OK",
+      "d1": "misses",
+      "d1_status": "OK",
+      "d2": "misses",
+      "d2_fired": {
+        "key": 0,
+        "object_store": 0
+      },
+      "d2_status": "OK",
+      "d3": "fires",
+      "d3_fired": {
+        "key": 0,
+        "object_store": 1
+      },
+      "d3_status": "OK",
+      "obtained": true
+    },
+    "c06": {
+      "d0": "fires",
+      "d0_status": "OK",
+      "d1": "fires",
+      "d1_status": "OK",
+      "d2": "misses",
+      "d2_fired": {
+        "key": 0,
+        "object_store": 0
+      },
+      "d2_status": "OK",
+      "d3": "fires",
+      "d3_fired": {
+        "key": 2,
+        "object_store": 0
+      },
+      "d3_status": "OK",
+      "obtained": true
+    },
+    "c07": {
+      "d0": "fires",
+      "d0_status": "OK",
+      "d1": "fires",
+      "d1_status": "OK",
+      "d2": "misses",
+      "d2_fired": {
+        "key": 0,
+        "object_store": 0
+      },
+      "d2_status": "OK",
+      "d3": "fires",
+      "d3_fired": {
+        "key": 1,
+        "object_store": 0
+      },
+      "d3_status": "OK",
+      "obtained": true
+    },
+    "c08": {
+      "d0": "fires",
+      "d0_status": "OK",
+      "d1": "fires",
+      "d1_status": "OK",
+      "d2": "misses",
+      "d2_fired": {
+        "key": 0,
+        "object_store": 0
+      },
+      "d2_status": "OK",
+      "d3": "fires",
+      "d3_fired": {
+        "key": 2,
+        "object_store": 0
+      },
+      "d3_status": "OK",
+      "obtained": true
+    },
+    "c09": {
+      "d0": "fires",
+      "d0_status": "OK",
+      "d1": "fires",
+      "d1_status": "OK",
+      "d2": "misses",
+      "d2_fired": {
+        "key": 0,
+        "object_store": 0
+      },
+      "d2_status": "OK",
+      "d3": "fires",
+      "d3_fired": {
+        "key": 1,
+        "object_store": 0
+      },
+      "d3_status": "OK",
+      "obtained": true
+    },
+    "c10": {
+      "d0": "misses",
+      "d0_status": "OK",
+      "d1": "misses",
+      "d1_status": "OK",
+      "d2": "misses",
+      "d2_fired": {
+        "key": 0,
+        "object_store": 0
+      },
+      "d2_status": "OK",
+      "d3": "fires",
+      "d3_fired": {
+        "key": 2,
+        "object_store": 0
+      },
+      "d3_status": "OK",
+      "obtained": true
+    },
+    "c11": {
+      "d0": "misses",
+      "d0_status": "OK",
+      "d1": "misses",
+      "d1_status": "OK",
+      "d2": "misses",
+      "d2_fired": {
+        "key": 0,
+        "object_store": 0
+      },
+      "d2_status": "OK",
+      "d3": "fires",
+      "d3_fired": {
+        "key": 1,
+        "object_store": 0
+      },
+      "d3_status": "OK",
+      "obtained": true
+    },
+    "c12": {
+      "d0": "misses",
+      "d0_status": "OK",
+      "d1": "misses",
+      "d1_status": "OK",
+      "d2": "misses",
+      "d2_fired": {
+        "key": 0,
+        "object_store": 0
+      },
+      "d2_status": "OK",
+      "d3": "misses",
+      "d3_fired": {
+        "key": 0,
+        "object_store": 0
+      },
+      "d3_status": "OK",
+      "obtained": true
+    },
+    "c13": {
+      "d0": null,
+      "d0_status": "SKIPPED",
+      "d1": null,
+      "d1_status": "SKIPPED",
+      "d2": null,
+      "d2_status": "SKIPPED",
+      "d3": null,
+      "d3_status": "SKIPPED",
+      "obtained": false
+    }
+  },
+  "receipt": "co1_5aa640a2d561cf36ca9743cc93c5624c3b2a62bdf19222fadc9d1a0617534932"
+}
