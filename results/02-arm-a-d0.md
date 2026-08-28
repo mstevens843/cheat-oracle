@@ -31,12 +31,15 @@ c13 block_device                miss   skipped  floor; needs device access
 run clean** - c02 (hardlink outside the watched dir), c03 (a pre-existing copy), c04 (git
 cat-file), c05 (a loose object inflated with zlib, no git binary), c10 (kill the in-container
 watcher), c11 (unlink the fail-open flag), c12 (fetch the same bytes over the network). The
-detector caught only the plain read, the mmap read (it greps OPEN), the bind mount, and the
-build-early plain read. Every row is backed by the canary GUID appearing at the channel's sink, and
+detector caught five: the plain read, the mmap read (it greps OPEN), the bind mount, the
+build-early plain read, and c08, whose overflow this substrate would not reproduce (below, and
+excluded from the undercount rather than counted as a catch on the merits).
+Every row is backed by the canary GUID appearing at the channel's sink, and
 the whole run carries a canonical-JSON SHA-256 receipt (`evidence/arm-a-d0.json`).
 
-The model agreed with the substrate on 11 of 12 exercised channels. The two places it did not are
-the interesting part, and neither is swept away.
+The model agreed with the substrate on 11 of 12 exercised channels. The one cell where it did not
+(c08), and the one the harness forced a model change on before this run (c06, so the shipped table
+above shows it agreeing), are the interesting part, and neither is swept away.
 
 ## Correction 1 - the harness beat the model on c06, and the model was changed
 

@@ -1,5 +1,15 @@
 # 01 - The model, before any exploit
 
+Superseded note, 2026-08-28: this entry is a snapshot of the model as it stood BEFORE the harness
+corrected it in `results/02`, and four of its numbers moved when c06 (bind mount) went into d0's
+FIRES set. The matrix block below is the captured output of `uv run python -m cheat_oracle.model` on
+2026-08-25 and is deliberately not rewritten; running that command today prints `c06
+procroot_bindmount  FIRE  FIRE  miss  FIRE`, and the other 12 rows are unchanged. Read with
+`results/02`: d0 catches 4 of 13, not 3; d3 recovers 6 of d0's misses, not 7 (c06 is no longer one
+of them); d1 recovers exactly c02 over d0, not c02 and c06. The counts of the day (43 tests) are
+likewise as-of; RESULTS.md carries the current gate. Keeping the pre-correction numbers is the
+point of the notebook: the model was wrong here and the measurement is what changed it.
+
 Working record. The model layer is complete and self-verifying. It was written and tested with no
 container running and no answer key on disk: it is a pure prediction, and the empirical harness in
 later entries exists to try to prove it wrong.

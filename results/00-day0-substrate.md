@@ -43,6 +43,11 @@ itself is the unclaimed gap this project measures.
 
 ## Gate 3 - licensing / substrate decision
 
+Superseded in part, 2026-08-28: the "no documented download path" finding below was a stale package
+name, not a real wall. `harbor hub job download <job-id>` reaches all 25 jobs; `results/06` records
+the completed scan and `scripts/fetch-hvtb-traces.sh` pins the IDs. The licensing decision the gate
+reached is unchanged, and is why the primary substrate is still base Terminal-Bench 2.1.
+
 The 89 HVTB environments and 2,225 traces live only on Harbor hub with no documented download
 path and no declared license (the MIT license on `hack-verifiable-environments` covers the website
 and the TextArena code, not HVTB). Therefore the **primary, license-clean substrate is base

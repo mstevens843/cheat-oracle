@@ -20,7 +20,8 @@ is an honest LOWER BOUND on the retroactive undercount, stated as one.
 INPUT CONTRACT. Drop Harbor trial directories under `arm-b/traces/<trial>/`, or downloaded Harbor
 job directories under `arm-b/traces/<job>/<trial>/`. Each trial is read in Harbor layout: `agent/`
 (the ATIF trajectory) and `verifier/` (`reward.json` read with `--score-field`, default
-`hidden_solution`, or legacy `reward.txt`; a score at or below `--clean-reward` means scored clean).
+`hidden_solution`, which TAKES PRECEDENCE over the legacy scalar `reward.txt`; a score at or below
+`--clean-reward` means scored clean).
 
 GATING. With no traces present this reports GATED and writes no evidence. The moment real trials
 land in `arm-b/traces/`, it runs.
@@ -149,22 +150,54 @@ def _coerce_score(value: object) -> float | None:
     return None
 
 
-def _read_score(trial_dir: Path, score_field: str) -> float | None:
-    reward_file = trial_dir / "verifier" / "reward.txt"
-    if reward_file.exists():
-        try:
-            return float(reward_file.read_text().strip())
-        except (OSError, ValueError):
-            return None
+def _score_from_json(trial_dir: Path, score_field: str) -> float | None:
     reward_json = trial_dir / "verifier" / "reward.json"
-    if reward_json.exists():
-        try:
-            data: object = json.loads(reward_json.read_text())
-        except (OSError, json.JSONDecodeError):
-            return None
-        if isinstance(data, dict):
-            return _coerce_score(data.get(score_field))
-    return None
+    if not reward_json.exists():
+        return None
+    try:
+        data: object = json.loads(reward_json.read_text(errors="ignore"))
+    except (OSError, ValueError):
+        # ValueError covers json.JSONDecodeError AND UnicodeDecodeError. An unreadable verdict file
+        # must make ONE trial unscoreable, never abort a 2,225-trial scan on one bad byte - and
+        # reading reward.json first means every trial now takes this path, not just the ones
+        # without a reward.txt.
+        return None
+    return _coerce_score(data.get(score_field)) if isinstance(data, dict) else None
+
+
+def _score_from_txt(trial_dir: Path) -> float | None:
+    reward_file = trial_dir / "verifier" / "reward.txt"
+    if not reward_file.exists():
+        return None
+    try:
+        return float(reward_file.read_text().strip())
+    except (OSError, ValueError):
+        return None
+
+
+def _read_score(trial_dir: Path, score_field: str) -> float | None:
+    """The detector's verdict for a trial. `--score-field` names a per-flag score that lives in
+    `verifier/reward.json` (HVTB's released format), so reward.json is read FIRST and
+    `verifier/reward.txt` is only the legacy scalar fallback - used when reward.json is absent,
+    unparseable, or carries no value under that field.
+
+    The order is load-bearing, not cosmetic. Reading reward.txt first would silently discard
+    `--score-field` on any trial that ships both files and score the run by TASK SUCCESS instead of
+    by the answer-key flag, which inverts the meaning of `--clean-reward`: a successful trial
+    (reward 1) would be classed not-clean and dropped from the denominator.
+
+    The published Arm B count is unaffected by the reordering, and that is corroborated from
+    OUTSIDE this repo rather than argued from its own output. Harbor publishes HVTB's per-job flag
+    rates; summing rate x n_trials over the 25 jobs
+    (`scripts/fetch-hvtb-traces.sh --verify`) gives 224 trials with hidden_solution = 1, which is
+    exactly the 2,225 - 2,001 this scanner implies. The same source puts trials with task reward = 1
+    at 1,801, so a reward-scored read of the corpus would have called about 423 trials clean, not
+    2,001. The old precedence therefore cannot have produced the published count, whether or not a
+    reward.txt sat beside the JSON. (Arguing instead that 2,001 + 224 = 2,225 "must" be the
+    hidden_solution split would be circular: any binary split of 2,225 has that shape.)
+    """
+    score = _score_from_json(trial_dir, score_field)
+    return score if score is not None else _score_from_txt(trial_dir)
 
 
 def _scored_clean(trial_dir: Path, clean_reward: float, score_field: str) -> bool:

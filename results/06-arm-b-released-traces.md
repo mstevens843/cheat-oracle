@@ -15,7 +15,7 @@ MajoRoth/hack-verifiable-terminal-bench-2` still 404s and should not be used.
 
 The released traces score in `verifier/reward.json`, e.g.
 `{"reward": 1, "hidden_solution": 0, "read_tests": 0, "modify_tests": 0}`; `hidden_solution` is
-HVTB's answer-key-access flag (0 across 2,000 trials, 1 across 224 - the detected accesses). The
+HVTB's answer-key-access flag (0 across 2,001 trials, 1 across 224 - the detected accesses). The
 scanner reads it via `--score-field hidden_solution` and still supports legacy `reward.txt`.
 
 ## The overcount, caught

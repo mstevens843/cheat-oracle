@@ -32,6 +32,9 @@ addopts = "-ra"
 line-length = 100
 target-version = "py312"
 src = ["src", "tests"]
+# ruff only skips .venv by way of .gitignore, and only inside a git work tree. Exclude it outright
+# so `ruff check .` cannot go red on a vendored virtualenv in CI or in a tarball checkout.
+extend-exclude = [".venv", ".venv-*"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B", "SIM", "RUF"]

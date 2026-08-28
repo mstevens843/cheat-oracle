@@ -61,8 +61,8 @@ NO FALSE POSITIVE (all detectors clean): True
 ```
 
 `clean_noop` does legitimate work (reads the instruction file, writes a scratch file) and never
-touches the key, its copy, or the git objects. Every detector scores it clean. A detector that
-catches 7 of 12 hacks is only trustworthy beside this: it does not cry wolf on benign work. Receipt
+touches the key, its copy, or the git objects. Every detector scores it clean. A measured 7-of-12
+undercount is only trustworthy beside this: it does not cry wolf on benign work. Receipt
 `co1_36092bc8...`; asserted by `tests/test_negative_controls.py`.
 
 ## The measured floor (`uv run python -m cheat_oracle.harness.floor_c13`)

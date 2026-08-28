@@ -1,0 +1,65 @@
+# The unit gate, on every push and PR.
+#
+# What this proves: the model is pure and total, the canonical receipts are stable, and every
+# receipted artifact in evidence/ still carries the numbers the prose quotes from it - each of those
+# is a literal in a guard under tests/, and tests/test_guard_mutations.py re-applies 20
+# resealed hand-edits to prove the guards reject them. Editing evidence/ turns this red.
+#
+# What it does not do: it does not read README.md or RESULTS.md. The guards pin the numbers; keeping
+# the prose in step with them is still a human job.
+#
+# What it does NOT prove: it does not re-measure. The container arms (Arm A, the four-rung matrix,
+# the negative control, the c13 floor) need Docker, a Linux kernel with fanotify, and a privileged
+# loop device; they are run by hand and their receipted output is committed. CI grades those
+# artifacts, it does not regenerate them. The reproduction commands are in RESULTS.md.
+
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  check:
+    name: test / lint / typecheck (py3.12)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v7
+
+      # setup-uv publishes NO floating major tag: refs/tags on astral-sh/setup-uv are v10.0.0 and
+      # v10.0.1 only, so `@v10` does not resolve and the first run would be red. Pin the release.
+      # (actions/checkout does publish refs/tags/v7, so @v7 is fine.)
+      - name: Install uv, pin Python 3.12
+        uses: astral-sh/setup-uv@v10.0.1
+        with:
+          version: "0.11.26"
+          python-version: "3.12"
+          enable-cache: true
+          cache-dependency-glob: "uv.lock"
+
+      # --locked, not --frozen: uv.lock is committed so a floating ruff or mypy release cannot turn
+      # this red for a reason unrelated to the code, and --locked fails loudly if the lockfile and
+      # pyproject.toml have drifted apart rather than silently resolving something else.
+      - name: Install the dev dependency group
+        run: uv sync --locked --group dev
+
+      - name: Run the test suite
+        run: uv run pytest
+
+      - name: Lint
+        run: uv run ruff check .
+
+      - name: Type-check
+        run: uv run mypy

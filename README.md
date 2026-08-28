@@ -1,5 +1,7 @@
 # cheat-oracle
 
+[![CI](https://github.com/mstevens843/cheat-oracle/actions/workflows/ci.yml/badge.svg)](https://github.com/mstevens843/cheat-oracle/actions/workflows/ci.yml)
+
 **An in-container answer-key detector is a detector the subject can reach, so it systematically
 undercounts. This models the undercount, measures it against a definitional ground truth, closes
 the reachable channels with an out-of-container tamper-evident ledger, and names the one channel
@@ -59,6 +61,14 @@ cases. No exploit is pointed at a system the author does not control.
 >   were false positives (a `curl`, base64 noise, `git` calls that EXCLUDED admin), so the scanner was
 >   corrected to scan executed commands bound to the key path (`results/06`). Receipt:
 >   `co1_3a95af4390209b8ef4ed31f2bc951ae443fcdf0428629af0d2b9a77420ee12a6`.
+> - **Every headline number is guarded, and the guards are themselves attacked, in the suite.** All
+>   five receipted artifacts in `evidence/` have a test that re-derives the receipt and then asserts
+>   the claim the paragraphs above make from it. Because a receipt only stops a naive edit - the
+>   canonicalization is in this repo - `tests/test_guard_mutations.py` corrupts one published number
+>   at a time, RESEALS the record with a valid receipt, and requires the claim assertions to reject it
+>   anyway: drop a channel from the Arm A undercount, invent Arm B undercounts, delete the Arm B
+>   positive control, truncate the corpus, erase the disagreements, silence the c13 positive control.
+>   20 edits, all rejected: `uv run pytest`.
 > - **The measurement corrected the model, twice.** It caught the model mispredicting the bind-mount
 >   channel (`results/02`), then showed d2's out-of-container mount mark is blind cross-container - a
 >   `FAN_MARK_MOUNT` is per-vfsmount, the measured reason the fix marks the superblock (`results/04`).
@@ -93,8 +103,9 @@ images/subject/               the subject + HVTB-replica image (d0 dir watch + d
 images/monitor/               the canary-mint sidecar (d3 FAN_MARK_FILESYSTEM, d2 FAN_MARK_MOUNT)
 images/floor/                 the privileged c13 floor probe (loop device + raw read below the VFS)
 evidence/                     receipted observed-matrix / arm-a-d0 / negative-control / floor-c13 / arm-b json
-results/                      numbered, append-only lab notebook (00 substrate .. 06 Arm B)
+results/                      numbered, append-only lab notebook (00 substrate .. 07 hardening)
 arm-b/                        Harbor trial/job-dir scanner; raw traces stay out of the repo
+scripts/fetch-hvtb-traces.sh  the 25 pinned Harbor job IDs Arm B scanned (re-verified 2026-08-28)
 transform/                    base Terminal-Bench 2.1 -> HV form (Apache-2.0 clean)            [next]
 ```
 

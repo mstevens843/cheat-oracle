@@ -4,8 +4,9 @@ Verification record. Every number here was produced by running the command shown
 named below, and reading its output. Nothing is copied from an earlier run or a summary of a run.
 Where something is skipped, substrate-limited, or unproven, it says so and says why.
 
-**Frozen:** 2026-08-27
-**Toolchain:** Python 3.12.13, uv 0.11.26, pytest, ruff, mypy (strict) via `uv run`.
+**Frozen:** 2026-08-28
+**Toolchain:** Python 3.12.13, uv 0.11.26, pytest 9.1.1, ruff 0.16.5, mypy 2.3.1
+(strict) via `uv run`, pinned by the committed `uv.lock`.
 **Engine:** Docker Desktop 29.3.1, LinuxKit kernel 6.12.76-linuxkit aarch64.
 **Ground truth:** a synthetic canary GUID baked into the answer key; a channel "obtained" the key
 iff it emitted that GUID at its sink, which needs no detector to adjudicate.
@@ -14,9 +15,10 @@ iff it emitted that GUID at its sink, which needs no detector to adjudicate.
 
 | Gate | Result |
 |---|---|
-| Model + purity + thesis + control tests (`uv run pytest`) | **69 passed** |
+| Model + purity + thesis + evidence-guard tests (`uv run pytest`) | **128 passed** |
 | ruff | clean |
 | mypy --strict | clean |
+| Every headline number is guarded | all five `evidence/*.json` receipts re-derived by a test, and `tests/test_guard_mutations.py` re-applies 20 hand-edits of the published numbers - each RESEALED with a valid receipt, so only the claims can catch them - and requires every one to fail |
 | Predicted matrix (`python -m cheat_oracle.model`) | 13 channels x 4 detectors, pure derivation |
 | Arm A - HVTB replica undercount (`python -m cheat_oracle.report`) | **7 of 12 exercised channels obtained the key while d0 scored clean** |
 | Full 4-rung observed matrix (`python -m cheat_oracle.harness.full_matrix`) | predicted == observed in every exercised cell except c08 |
@@ -55,8 +57,8 @@ content-duplication channels or the sub-VFS floor, and it says so in the same ta
   blind out-of-container. Each rung isolates one axis, and the diff agrees with the model everywhere
   but the c08 substrate cell.
 - **A negative control bounds the false-positive rate.** clean_noop does legitimate work and never
-  touches the key; all four detectors score it clean (`evidence/negative-control.json`). A detector
-  that catches 7 of 12 hacks means nothing without this.
+  touches the key; all four detectors score it clean (`evidence/negative-control.json`). A measured
+  7-of-12 undercount means nothing without this.
 - **Arm B is a real-trace scan, and a null result, honestly.** Harbor's public HVTB org exposes 25
   jobs for `hack-verifiable-environments/hv-terminal-bench-2-1`, 89 trials each. Scanning all 2,225
   released traces (`--score-field hidden_solution`) finds 2,001 the detector scored clean and **0**
@@ -67,10 +69,23 @@ content-duplication channels or the sub-VFS floor, and it says so in the same ta
   evasions Arm A proves possible were not observed being used in this sample; the vulnerability is
   latent, not observed exploited. Receipt
   `co1_3a95af4390209b8ef4ed31f2bc951ae443fcdf0428629af0d2b9a77420ee12a6`, story in `results/06`.
-- **Every observed artifact is receipted.** `evidence/{arm-a-d0,observed-matrix,negative-control,floor-c13,arm-b}.json`
-  each carry a canonical-JSON SHA-256 receipt. The existing tests re-derive the core harness receipts
-  and assert the empirical thesis over those artifacts; Arm B carries the scanner-produced receipt
-  recorded above.
+- **Every observed artifact is receipted, and every receipt is now checked by a test.**
+  `evidence/{arm-a-d0,observed-matrix,negative-control,floor-c13,arm-b}.json` each carry a
+  canonical-JSON SHA-256 receipt, and each has a guard that re-derives it and then asserts the claim
+  the README makes from it: `test_arm_a.py` (the 7-of-12 undercount, and that each of the seven
+  actually obtained the key), `test_discrimination.py` (the ladder), `test_negative_controls.py` (no
+  false positive), `test_floor.py` (obtained / VFS-fires / raw-silent), `test_arm_b_evidence.py`
+  (2,225 scanned, 2,001 clean, 0 undercounts, and the single positive-control command). Until
+  2026-08-28 only two of the five were guarded, and the two loudest numbers in the repo - the Arm A
+  undercount and the Arm B zero - were the unguarded ones.
+- **The guards are themselves tested, against the threat model that matters.** A receipt only stops a
+  naive edit: the canonicalization is in this repo, so anyone changing a number can recompute a valid
+  receipt in one line. `tests/test_guard_mutations.py` therefore corrupts one published number at a
+  time, RESEALS the record with a correct receipt, points the guard at the copy, and requires the
+  claim assertions to fail anyway. 20 edits, all rejected. Writing that test found a real hole:
+  deleting the recorded predicted-vs-observed disagreements passed every assertion, because "the only
+  disagreement is c08" was a subset check that an empty list satisfies. Both the Arm A and the ladder
+  guard now re-derive that list from the cells and demand an exact match.
 
 ## What this does not prove
 
@@ -90,11 +105,24 @@ content-duplication channels or the sub-VFS floor, and it says so in the same ta
   cannot see routes that leave no key-path reference in a command (a pre-existing copy, a raw
   object-hash read, a network mirror), so its 0 is a lower bound on this public sample, not a proof
   that no clean-scored trial ever obtained the key.
+- **Arm B's SCAN reproduces locally; its DOWNLOAD depends on Harbor.** The scanner runs against any
+  Harbor-shaped trial directory with no network and no account, and its correctness is pinned by
+  synthetic fixtures (`tests/test_arm_b.py`). Getting the 2,225 released traces back is the part this
+  repo cannot guarantee: they are not redistributed here, the copy used on 2026-08-27 lived in
+  `/private/tmp` and was wiped, and `harbor hub job list` does not enumerate this org's jobs on an
+  authenticated account (empty page for `--scope my|shared|all`, with or without `--search hvtb`),
+  while `harbor hub job download` accepts a UUID only. `scripts/fetch-hvtb-traces.sh` therefore pins
+  all 25 job IDs, recovered from the executed-command log of that download session. The pin is not
+  asked to be taken on trust: `scripts/fetch-hvtb-traces.sh --verify` resolves every ID against
+  Harbor and downloads nothing, and on 2026-08-28 it printed `All 25 pinned IDs resolve to the
+  expected job name and 89 trials`. Anyone with an account that can see the jobs gets the same table.
+  If the org unshares a job, that job is not recoverable by name, and both the verify and the
+  download path say so and exit non-zero rather than handing off a partial corpus.
 
 ## Reproducing this document
 
-    uv sync --group dev
-    uv run pytest && uv run ruff check . && uv run mypy
+    uv sync --locked --group dev
+    uv run pytest && uv run ruff check . && uv run mypy       # what CI runs; no docker needed
     GUID=$(cat images/subject/harness/GUID)
     docker build --build-arg GUID=$GUID -t cheat-oracle/subject:dev images/subject
     docker build -f images/monitor/Dockerfile -t cheat-oracle/monitor:dev .
@@ -104,5 +132,15 @@ content-duplication channels or the sub-VFS floor, and it says so in the same ta
     uv run python -m cheat_oracle.harness.full_matrix      # the full 4-rung observed matrix
     uv run python -m cheat_oracle.harness.negative_control # no detector fires on benign work
     uv run python -m cheat_oracle.harness.floor_c13        # the measured raw-device floor
-    uv run python -m cheat_oracle.harness.arm_b            # retroactive trace scan
+    scripts/fetch-hvtb-traces.sh /private/tmp/cheat-oracle-hvtb-jobs   # 25 pinned Harbor jobs
+    uv run python -m cheat_oracle.harness.arm_b \
+      --traces /private/tmp/cheat-oracle-hvtb-jobs --key-path admin/ \
+      --score-field hidden_solution                    # Arm B: retroactive trace scan
     uv run python -m cheat_oracle.adversaries.reflexive    # attack the fix
+
+A note on the two kinds of document here. This file is the living verification record and its gate
+numbers are current as of the Frozen date above. The numbered entries in `results/` are an
+append-only lab notebook: each records what was true when it was written, including its suite size
+at the time. Where a later entry supersedes an earlier one, the earlier one says so in a dated banner
+at the top. Outright errors of fact are corrected in place, and every such correction is itemised in
+`results/07` with the before and after, so no notebook edit is silent.

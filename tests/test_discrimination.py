@@ -19,6 +19,7 @@ from pathlib import Path
 import pytest
 
 from cheat_oracle.canonical import receipt
+from cheat_oracle.model.predict import PREDICTED
 
 EVIDENCE = Path(__file__).resolve().parent.parent / "evidence" / "observed-matrix.json"
 
@@ -97,3 +98,89 @@ def test_only_documented_disagreement_is_the_overflow_substrate_case() -> None:
     disagreements = rec["analysis"]["disagreements"]  # type: ignore[index]
     channels = {d["channel"] for d in disagreements}
     assert channels <= {"c08"}, f"unexpected model-vs-observation disagreement: {channels}"
+
+
+def test_the_disagreement_list_is_re_derivable_from_the_observed_cells() -> None:
+    # The assertion above is a subset check, so an EMPTY disagreement list satisfies it. A new
+    # model-vs-observation gap could be hidden by deleting the row rather than explaining it,
+    # leaving "predicted == observed except c08" true only because nothing else was recorded. So
+    # recompute the whole list from the observed verdicts and the model, and demand an exact match.
+    # d2 is measured but deliberately not diffed cell-by-cell (results/04), so it is not derived.
+    rec = _load()
+    observed = rec["observed"]
+    assert isinstance(observed, dict)
+    derived: set[tuple[str, str]] = set()
+    for cid, cell in observed.items():
+        assert isinstance(cell, dict)
+        for did in ("d0", "d1", "d3"):
+            if cell.get(f"{did}_status") != "OK":
+                continue
+            if cell.get(did) != PREDICTED[cid][did].verdict.value:
+                derived.add((str(cid), did))
+    disagreements = rec["analysis"]["disagreements"]  # type: ignore[index]
+    assert isinstance(disagreements, list)
+    recorded = {(str(dict(d)["channel"]), str(dict(d)["detector"])) for d in disagreements}
+    assert derived == recorded, f"recorded {recorded} but the cells say {derived}"
+
+
+# The sets README.md and RESULTS.md publish from this artifact, written out so a change has to edit
+# this line and explain itself. Subset checks elsewhere in this file cannot catch an INFLATED claim.
+PUBLISHED = {
+    "d0_undercount": {"c02", "c03", "c04", "c05", "c10", "c11", "c12"},
+    "d1_undercount": {"c03", "c04", "c05", "c10", "c11", "c12"},
+    "d2_out_of_container_caught": set(),
+    "d3_undercount_floor": {"c03", "c12"},
+    "recovered_by_fix": {"c02", "c04", "c05", "c10", "c11"},
+    "recovered_d1_over_d0": {"c02"},
+    "recovered_d3_over_d1": {"c04", "c05", "c10", "c11"},
+}
+
+
+def test_the_published_sets_are_exactly_what_the_readme_claims() -> None:
+    # "canary-mint recovers 5" and "the honest floor is c03/c12/c13" are exact claims. Asserting
+    # only `{"c10","c11"} <= recovered` would let a fix that claimed to catch everything pass.
+    a = _analysis()
+    for key, expected in PUBLISHED.items():
+        assert _set(a, key) == expected, f"{key}: {_set(a, key)} != {expected}"
+
+
+def test_the_published_sets_are_re_derivable_from_the_observed_cells() -> None:
+    # The summary block is a convenience over the per-cell verdicts. Re-derive every set from the
+    # cells so an edit to the summary alone disagrees with the matrix beneath it.
+    rec = _load()
+    observed = rec["observed"]
+    assert isinstance(observed, dict)
+
+    def missed(detector: str) -> set[str]:
+        out: set[str] = set()
+        for cid, cell in observed.items():
+            assert isinstance(cell, dict)
+            if cell.get(f"{detector}_status") == "OK" and cell.get(detector) == "misses":
+                out.add(str(cid))
+        return out
+
+    def fired(detector: str) -> set[str]:
+        out: set[str] = set()
+        for cid, cell in observed.items():
+            assert isinstance(cell, dict)
+            if cell.get(f"{detector}_status") == "OK" and cell.get(detector) == "fires":
+                out.add(str(cid))
+        return out
+
+    a = _analysis()
+    d0, d1, d3 = missed("d0"), missed("d1"), missed("d3")
+    assert _set(a, "d0_undercount") == d0
+    assert _set(a, "d1_undercount") == d1
+    assert _set(a, "d3_undercount_floor") == d3
+    assert _set(a, "d2_out_of_container_caught") == fired("d2")
+    assert _set(a, "recovered_by_fix") == d0 - d3
+    assert _set(a, "recovered_d1_over_d0") == d0 - d1
+    assert _set(a, "recovered_d3_over_d1") == d1 - d3
+
+    disc = a["discrimination"]
+    assert isinstance(disc, dict)
+    assert disc["fix_catches_strictly_more"] is (d3 < d0)
+    assert disc["floor_nonempty"] is bool(d3)
+    assert disc["d1_recovers_over_d0"] is bool(d0 - d1)
+    assert disc["fix_beats_inode_watch"] is bool(d1 - d3)
+    assert disc["d2_blind_out_of_container"] is (not fired("d2"))
