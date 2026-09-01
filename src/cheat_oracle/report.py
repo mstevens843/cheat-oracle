@@ -21,6 +21,8 @@ _SYM = {Verdict.FIRES: "FIRE", Verdict.MISSES: "miss", Verdict.VOID: "VOID", Non
 
 
 def _diff_kind(predicted: Verdict, obs: Observation) -> str:
+    if obs.status == "ERROR":
+        return "error"
     if obs.status != "OK":
         return "not-exercised"
     assert obs.verdict is not None
@@ -56,6 +58,7 @@ def render(observations: list[Observation]) -> tuple[str, dict[str, object]]:
             "disagree-model": "DISAGREE (model wrong; correct it and record in results/)",
             "disagree-substrate": "overflow not reproduced on default queue (mechanism real)",
             "not-exercised": f"skipped rc={o.raw.get('rc') if o else '-'} (needs privilege)",
+            "error": f"ERROR rc={o.raw.get('rc') if o else '-'} (no trustworthy result)",
             "not-run": "not run",
         }[kind]
         lines.append(f"{cid + ' ' + ch.slug:26}{_SYM[pred]:>10}{obs_sym:>10}  {note}")
@@ -92,6 +95,9 @@ def render(observations: list[Observation]) -> tuple[str, dict[str, object]]:
     skipped = [o.channel_id for o in observations if o.status == "SKIPPED"]
     if skipped:
         lines.append(f"Not exercised on this substrate (privilege/floor): {skipped}")
+    errors = [o.channel_id for o in observations if o.status == "ERROR"]
+    if errors:
+        lines.append(f"Errors (no evidence should be written): {errors}")
 
     record: dict[str, object] = {
         "arm": "A",
@@ -104,7 +110,10 @@ def render(observations: list[Observation]) -> tuple[str, dict[str, object]]:
     }
     record["receipt"] = receipt(record)
     lines.append("")
-    lines.append(f"receipt: {record['receipt']}")
+    if errors:
+        lines.append("receipt withheld: run had errors and is not evidence")
+    else:
+        lines.append(f"receipt: {record['receipt']}")
     return "\n".join(lines), record
 
 
@@ -121,6 +130,10 @@ def main(argv: list[str]) -> int:
     observations = observe_all_d0()
     text, record = render(observations)
     print(text)
+    errors = [o for o in observations if o.status == "ERROR"]
+    if errors:
+        print("\nnot writing evidence: at least one channel failed to produce a trustworthy result")
+        return 1
     from pathlib import Path
 
     out = Path(__file__).resolve().parent.parent.parent / "evidence" / "arm-a-d0.json"

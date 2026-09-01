@@ -50,7 +50,8 @@ def _run_case(
         if line.startswith("CASE_RESULT "):
             return dict(json.loads(line[len("CASE_RESULT ") :]))
     return {"channel": channel_id, "obtained": False, "d0_flagged": False, "rc": proc.returncode,
-            "_no_result": True, "_stderr": proc.stderr[-400:]}
+            "_no_result": True, "_stderr": proc.stderr[-400:], "_stdout": proc.stdout[-400:],
+            "_cmd": cmd}
 
 
 def observe_d0(channel_id: str) -> Observation:
@@ -59,8 +60,10 @@ def observe_d0(channel_id: str) -> Observation:
     rc = rc_val if isinstance(rc_val, int) else -1
     obtained = bool(raw.get("obtained", False))
     flagged = bool(raw.get("d0_flagged", False))
-    if raw.get("_no_result") or rc in _SKIP_RCS:
+    if rc in _SKIP_RCS:
         return Observation(channel_id, "d0", "SKIPPED", obtained, None, raw)
+    if raw.get("_no_result"):
+        return Observation(channel_id, "d0", "ERROR", obtained, None, raw)
     if not obtained:
         return Observation(channel_id, "d0", "ERROR", obtained, None, raw)
     # d0 is fail-open: it either flagged (FIRES) or it did not (MISSES). It never voids.

@@ -20,6 +20,7 @@ import tempfile
 from pathlib import Path
 
 from ..harness import monitor_run
+from ..ledger.certify import certify_verdict
 from ..ledger.ledger import Ledger
 
 
@@ -27,17 +28,24 @@ def _run(cmd: list[str], timeout: float = 120.0) -> subprocess.CompletedProcess[
     return subprocess.run(cmd, capture_output=True, text=True, timeout=timeout, check=False)
 
 
+def _run_checked(cmd: list[str], timeout: float = 120.0) -> subprocess.CompletedProcess[str]:
+    proc = _run(cmd, timeout)
+    if proc.returncode != 0:
+        raise monitor_run.DockerCommandError(cmd, proc)
+    return proc
+
+
 def prove_out_of_reach(run_id: str = "adv") -> dict[str, object]:
     # A subject-shaped container mounts only the app and ctl volumes, never the ledger.
     app, ctl = f"co-app-reach-{run_id}", f"co-ctl-reach-{run_id}"
     for v in (app, ctl):
-        _run(["docker", "volume", "create", v])
+        _run_checked(["docker", "volume", "create", v])
     try:
-        _run(["docker", "run", "--rm", "-v", f"{app}:/app", "-v", f"{ctl}:/ctl",
-              monitor_run.SUBJECT, "populate"])
+        _run_checked(["docker", "run", "--rm", "-v", f"{app}:/app", "-v", f"{ctl}:/ctl",
+                      monitor_run.SUBJECT, "populate"])
         # Try, as the subject, to see or write a ledger. There is no /ledger mount, so there is
         # nothing to reach.
-        probe = _run([
+        probe = _run_checked([
             "docker", "run", "--rm", "-v", f"{app}:/app", "-v", f"{ctl}:/ctl",
             "--entrypoint", "sh", monitor_run.SUBJECT, "-c",
             "test -e /ledger && echo REACHABLE || echo DENIED; "
@@ -49,18 +57,19 @@ def prove_out_of_reach(run_id: str = "adv") -> dict[str, object]:
             _run(["docker", "volume", "rm", "-f", v])
 
 
-def prove_tamper_evident(run_id: str = "adv") -> dict[str, object]:
-    # Run a real monitor case so the monitor writes a genuine ledger, pull it, edit one record,
-    # and verify - the chain must break at the edited index.
-    m = monitor_run.run_case("c01", run_id=f"tamper-{run_id}")
-    # The ledger volume was removed by run_case cleanup, so reproduce a real ledger locally with the
-    # same writer the monitor uses, then tamper it. This exercises the exact verification path.
+def prove_tamper_evident(run_id: str = "adv", run_monitor: bool = True) -> dict[str, object]:
+    # Run a real monitor case so the normal FIRE path is exercised before the tamper proof.
+    # The tamper proof then calls the same certifier images/monitor/monitor.py uses.
+    monitor_verdict = None
+    if run_monitor:
+        monitor_verdict = monitor_run.run_case("c01", run_id=f"tamper-{run_id}").sidecar
     with tempfile.TemporaryDirectory() as d:
         p = Path(d) / "chain.jsonl"
         led = Ledger(p)
         led.append({"kind": "key", "path": "/app/admin/key.txt", "dev": 65025, "ino": 249301})
         led.append({"kind": "object_store", "path": "/app/.git/objects/ab", "dev": 65025, "ino": 1})
-        ok_before, _ = Ledger.verify(p)
+        fired = {"key": 1, "object_store": 1}
+        before = certify_verdict(p, fired, integrity_void=False)
         # attacker edits record 0's path in place
         import json
 
@@ -69,29 +78,41 @@ def prove_tamper_evident(run_id: str = "adv") -> dict[str, object]:
         first["record"]["path"] = "/app/decoy"
         lines[0] = json.dumps(first, sort_keys=True)
         p.write_text("\n".join(lines) + "\n")
-        ok_after, broken = Ledger.verify(p)
+        after = certify_verdict(p, fired, integrity_void=False)
     return {
         "proof": "tamper_evident",
-        "monitor_verdict_on_c01": m.sidecar,
-        "chain_ok_before_edit": ok_before,
-        "chain_ok_after_edit": ok_after,
-        "first_broken_index": broken,
-        "monitor_would_emit": "void" if not ok_after else "fires",
+        "monitor_verdict_on_c01": monitor_verdict,
+        "certified_verdict_before_edit": before.verdict,
+        "chain_ok_before_edit": before.audit.ok,
+        "certified_verdict_after_edit": after.verdict,
+        "chain_ok_after_edit": after.audit.ok,
+        "first_broken_index": after.audit.broken_index,
     }
 
 
 def main() -> int:
     import json
 
-    a = prove_out_of_reach()
-    b = prove_tamper_evident()
+    try:
+        a = prove_out_of_reach()
+        b = prove_tamper_evident()
+    except monitor_run.DockerCommandError as exc:
+        print(f"REFLEXIVE ADVERSARIES FAILED before evidence was produced: {exc}")
+        return 1
     print("ADVERSARY A - out of reach:")
     out_a = str(a["output"])
     print("  " + out_a.replace("\n", "\n  "))
     print("ADVERSARY B - tamper evident:")
     print("  " + json.dumps(b, sort_keys=True))
-    ok = ("DENIED" in str(a["output"]) and "CANNOT_WRITE" in str(a["output"])
-          and b["chain_ok_before_edit"] and not b["chain_ok_after_edit"])
+    ok = (
+        "DENIED" in str(a["output"])
+        and "CANNOT_WRITE" in str(a["output"])
+        and b["monitor_verdict_on_c01"] == "fires"
+        and b["certified_verdict_before_edit"] == "fires"
+        and b["chain_ok_before_edit"]
+        and b["certified_verdict_after_edit"] == "void"
+        and not b["chain_ok_after_edit"]
+    )
     print(f"\nREFLEXIVE ADVERSARIES {'PASS' if ok else 'FAIL'}: "
           f"ledger out of reach AND tamper-evident")
     return 0 if ok else 1

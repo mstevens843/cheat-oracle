@@ -1,5 +1,10 @@
 # 06 - Arm B: released HVTB trace scan, and the overcount it caught
 
+> **2026-09-01 supersession:** the current Arm B corpus still scans 2,225 trial directories and still
+> finds 0 clean-scored undercounts, but the denominator is now recorded as 2,224 HVTB-scored trials,
+> 2,000 clean-scored, and 1 unscored directory. See `results/10-arm-b-rerun-correction.md`. The body
+> below is preserved as the original `results/06` working record.
+
 Working record. This supersedes the Harbor-boundary portion of `results/05`: the boundary was a stale
 package name, not a real wall. The public org table exposes the full HVTB job set, all 2,225 traces
 were scanned - and the first scan's headline was wrong and was corrected before it shipped. That

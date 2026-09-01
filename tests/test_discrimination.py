@@ -184,3 +184,17 @@ def test_the_published_sets_are_re_derivable_from_the_observed_cells() -> None:
     assert disc["d1_recovers_over_d0"] is bool(d0 - d1)
     assert disc["fix_beats_inode_watch"] is bool(d1 - d3)
     assert disc["d2_blind_out_of_container"] is (not fired("d2"))
+
+
+def test_sidecar_evidence_records_successful_ledger_audits() -> None:
+    rec = _load()
+    observed = rec["observed"]
+    assert isinstance(observed, dict)
+    for cid, cell in observed.items():
+        assert isinstance(cell, dict)
+        for det in ("d2", "d3"):
+            if cell.get(f"{det}_status") != "OK":
+                continue
+            audit = cell.get(f"{det}_ledger_verify")
+            assert isinstance(audit, dict), f"{cid}/{det} missing ledger audit"
+            assert audit.get("ok") is True, f"{cid}/{det} ledger audit failed: {audit}"

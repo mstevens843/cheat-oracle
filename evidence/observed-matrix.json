@@ -77,11 +77,25 @@
         "key": 0,
         "object_store": 0
       },
+      "d2_ledger_verify": {
+        "broken_index": -1,
+        "expected_records": 0,
+        "observed_records": 0,
+        "ok": true,
+        "reason": "absent-empty"
+      },
       "d2_status": "OK",
       "d3": "fires",
       "d3_fired": {
-        "key": 2,
+        "key": 1,
         "object_store": 0
+      },
+      "d3_ledger_verify": {
+        "broken_index": -1,
+        "expected_records": 1,
+        "observed_records": 1,
+        "ok": true,
+        "reason": "ok"
       },
       "d3_status": "OK",
       "obtained": true
@@ -96,11 +110,25 @@
         "key": 0,
         "object_store": 0
       },
+      "d2_ledger_verify": {
+        "broken_index": -1,
+        "expected_records": 0,
+        "observed_records": 0,
+        "ok": true,
+        "reason": "absent-empty"
+      },
       "d2_status": "OK",
       "d3": "fires",
       "d3_fired": {
         "key": 1,
         "object_store": 0
+      },
+      "d3_ledger_verify": {
+        "broken_index": -1,
+        "expected_records": 1,
+        "observed_records": 1,
+        "ok": true,
+        "reason": "ok"
       },
       "d3_status": "OK",
       "obtained": true
@@ -115,11 +143,25 @@
         "key": 0,
         "object_store": 0
       },
+      "d2_ledger_verify": {
+        "broken_index": -1,
+        "expected_records": 0,
+        "observed_records": 0,
+        "ok": true,
+        "reason": "absent-empty"
+      },
       "d2_status": "OK",
       "d3": "misses",
       "d3_fired": {
         "key": 0,
         "object_store": 0
+      },
+      "d3_ledger_verify": {
+        "broken_index": -1,
+        "expected_records": 0,
+        "observed_records": 0,
+        "ok": true,
+        "reason": "absent-empty"
       },
       "d3_status": "OK",
       "obtained": true
@@ -134,11 +176,25 @@
         "key": 0,
         "object_store": 0
       },
+      "d2_ledger_verify": {
+        "broken_index": -1,
+        "expected_records": 0,
+        "observed_records": 0,
+        "ok": true,
+        "reason": "absent-empty"
+      },
       "d2_status": "OK",
       "d3": "fires",
       "d3_fired": {
         "key": 0,
         "object_store": 2
+      },
+      "d3_ledger_verify": {
+        "broken_index": -1,
+        "expected_records": 2,
+        "observed_records": 2,
+        "ok": true,
+        "reason": "ok"
       },
       "d3_status": "OK",
       "obtained": true
@@ -153,11 +209,25 @@
         "key": 0,
         "object_store": 0
       },
+      "d2_ledger_verify": {
+        "broken_index": -1,
+        "expected_records": 0,
+        "observed_records": 0,
+        "ok": true,
+        "reason": "absent-empty"
+      },
       "d2_status": "OK",
       "d3": "fires",
       "d3_fired": {
         "key": 0,
         "object_store": 1
+      },
+      "d3_ledger_verify": {
+        "broken_index": -1,
+        "expected_records": 1,
+        "observed_records": 1,
+        "ok": true,
+        "reason": "ok"
       },
       "d3_status": "OK",
       "obtained": true
@@ -172,11 +242,25 @@
         "key": 0,
         "object_store": 0
       },
+      "d2_ledger_verify": {
+        "broken_index": -1,
+        "expected_records": 0,
+        "observed_records": 0,
+        "ok": true,
+        "reason": "absent-empty"
+      },
       "d2_status": "OK",
       "d3": "fires",
       "d3_fired": {
-        "key": 2,
+        "key": 1,
         "object_store": 0
+      },
+      "d3_ledger_verify": {
+        "broken_index": -1,
+        "expected_records": 1,
+        "observed_records": 1,
+        "ok": true,
+        "reason": "ok"
       },
       "d3_status": "OK",
       "obtained": true
@@ -191,11 +275,25 @@
         "key": 0,
         "object_store": 0
       },
+      "d2_ledger_verify": {
+        "broken_index": -1,
+        "expected_records": 0,
+        "observed_records": 0,
+        "ok": true,
+        "reason": "absent-empty"
+      },
       "d2_status": "OK",
       "d3": "fires",
       "d3_fired": {
         "key": 1,
         "object_store": 0
+      },
+      "d3_ledger_verify": {
+        "broken_index": -1,
+        "expected_records": 1,
+        "observed_records": 1,
+        "ok": true,
+        "reason": "ok"
       },
       "d3_status": "OK",
       "obtained": true
@@ -210,11 +308,25 @@
         "key": 0,
         "object_store": 0
       },
+      "d2_ledger_verify": {
+        "broken_index": -1,
+        "expected_records": 0,
+        "observed_records": 0,
+        "ok": true,
+        "reason": "absent-empty"
+      },
       "d2_status": "OK",
       "d3": "fires",
       "d3_fired": {
         "key": 2,
         "object_store": 0
+      },
+      "d3_ledger_verify": {
+        "broken_index": -1,
+        "expected_records": 2,
+        "observed_records": 2,
+        "ok": true,
+        "reason": "ok"
       },
       "d3_status": "OK",
       "obtained": true
@@ -229,11 +341,25 @@
         "key": 0,
         "object_store": 0
       },
+      "d2_ledger_verify": {
+        "broken_index": -1,
+        "expected_records": 0,
+        "observed_records": 0,
+        "ok": true,
+        "reason": "absent-empty"
+      },
       "d2_status": "OK",
       "d3": "fires",
       "d3_fired": {
-        "key": 1,
+        "key": 2,
         "object_store": 0
+      },
+      "d3_ledger_verify": {
+        "broken_index": -1,
+        "expected_records": 2,
+        "observed_records": 2,
+        "ok": true,
+        "reason": "ok"
       },
       "d3_status": "OK",
       "obtained": true
@@ -248,11 +374,25 @@
         "key": 0,
         "object_store": 0
       },
+      "d2_ledger_verify": {
+        "broken_index": -1,
+        "expected_records": 0,
+        "observed_records": 0,
+        "ok": true,
+        "reason": "absent-empty"
+      },
       "d2_status": "OK",
       "d3": "fires",
       "d3_fired": {
-        "key": 2,
+        "key": 1,
         "object_store": 0
+      },
+      "d3_ledger_verify": {
+        "broken_index": -1,
+        "expected_records": 1,
+        "observed_records": 1,
+        "ok": true,
+        "reason": "ok"
       },
       "d3_status": "OK",
       "obtained": true
@@ -267,11 +407,25 @@
         "key": 0,
         "object_store": 0
       },
+      "d2_ledger_verify": {
+        "broken_index": -1,
+        "expected_records": 0,
+        "observed_records": 0,
+        "ok": true,
+        "reason": "absent-empty"
+      },
       "d2_status": "OK",
       "d3": "fires",
       "d3_fired": {
         "key": 1,
         "object_store": 0
+      },
+      "d3_ledger_verify": {
+        "broken_index": -1,
+        "expected_records": 1,
+        "observed_records": 1,
+        "ok": true,
+        "reason": "ok"
       },
       "d3_status": "OK",
       "obtained": true
@@ -286,11 +440,25 @@
         "key": 0,
         "object_store": 0
       },
+      "d2_ledger_verify": {
+        "broken_index": -1,
+        "expected_records": 0,
+        "observed_records": 0,
+        "ok": true,
+        "reason": "absent-empty"
+      },
       "d2_status": "OK",
       "d3": "misses",
       "d3_fired": {
         "key": 0,
         "object_store": 0
+      },
+      "d3_ledger_verify": {
+        "broken_index": -1,
+        "expected_records": 0,
+        "observed_records": 0,
+        "ok": true,
+        "reason": "absent-empty"
       },
       "d3_status": "OK",
       "obtained": true
@@ -307,5 +475,5 @@
       "obtained": false
     }
   },
-  "receipt": "co1_5aa640a2d561cf36ca9743cc93c5624c3b2a62bdf19222fadc9d1a0617534932"
+  "receipt": "co1_2b2b8b07e63fdebd82af33c3d2ce78c7e723ef6ad732587d79453f0b34a5ff2b"
 }

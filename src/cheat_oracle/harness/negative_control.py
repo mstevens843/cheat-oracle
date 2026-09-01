@@ -48,8 +48,15 @@ def analyze(obs: dict[str, object]) -> dict[str, object]:
 
 
 def main() -> int:
-    obs = collect()
+    try:
+        obs = collect()
+    except monitor_run.DockerCommandError as exc:
+        print(f"negative control failed before evidence was written: {exc}")
+        return 1
     analysis = analyze(obs)
+    if obs["d2"] not in ("fires", "misses", "void") or obs["d3"] not in ("fires", "misses", "void"):
+        print(f"negative control failed before evidence was written: {obs}")
+        return 1
     record: dict[str, object] = {"observed": obs, "analysis": analysis}
     record["receipt"] = receipt(record)
     ok = bool(analysis["all_clean"])

@@ -14,7 +14,7 @@
 # WHAT THIS IS NOT. It is not HVTB's real environment (those 89 images are unlicensed on Harbor).
 # It is a license-clean reproduction of the detector mechanism the paper and the prototype describe,
 # so every number measured against it is reproducible by anyone from this Dockerfile alone.
-FROM debian:stable-slim
+FROM debian:bookworm-slim@sha256:88200866dfff7ea7f5cbcb6ec7c8a701889efe6fe859fe64d6990e4b07ea4171
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
       git inotify-tools python3 curl procps ca-certificates util-linux coreutils \

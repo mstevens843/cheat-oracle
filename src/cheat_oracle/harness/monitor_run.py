@@ -23,6 +23,16 @@ PRIV_CHANNELS: dict[str, list[str]] = {
 }
 
 
+class DockerCommandError(RuntimeError):
+    def __init__(self, cmd: list[str], proc: subprocess.CompletedProcess[str]) -> None:
+        tail = (proc.stderr or proc.stdout)[-400:].strip()
+        super().__init__(f"{' '.join(cmd)} failed with rc={proc.returncode}: {tail}")
+        self.cmd = cmd
+        self.returncode = proc.returncode
+        self.stderr = proc.stderr
+        self.stdout = proc.stdout
+
+
 @dataclass(frozen=True)
 class MonitorRun:
     channel_id: str
@@ -40,8 +50,15 @@ def _run(cmd: list[str], timeout: float = 180.0) -> subprocess.CompletedProcess[
     return subprocess.run(cmd, capture_output=True, text=True, timeout=timeout, check=False)
 
 
+def _run_checked(cmd: list[str], timeout: float = 180.0) -> subprocess.CompletedProcess[str]:
+    proc = _run(cmd, timeout)
+    if proc.returncode != 0:
+        raise DockerCommandError(cmd, proc)
+    return proc
+
+
 def _vol_create(name: str) -> None:
-    _run(["docker", "volume", "create", name])
+    _run_checked(["docker", "volume", "create", name])
 
 
 def _vol_rm(name: str) -> None:
@@ -56,12 +73,12 @@ def run_case(channel_id: str, run_id: str, detector: str = "d3") -> MonitorRun:
         _vol_create(v)
     try:
         # 1. populate the shared app and signal env_ready
-        _run(["docker", "run", "--rm", "-v", f"{app}:/app", "-v", f"{ctl}:/ctl",
-              SUBJECT, "populate"])
+        _run_checked(["docker", "run", "--rm", "-v", f"{app}:/app", "-v", f"{ctl}:/ctl",
+                      SUBJECT, "populate"])
 
         # 2. start the monitor detached; wait for MON_READY
         _run(["docker", "rm", "-f", mon])
-        _run([
+        _run_checked([
             "docker", "run", "-d", "--name", mon, "--privileged",
             "-v", f"{app}:/app:ro", "-v", f"{ctl}:/ctl", "-v", f"{led}:/ledger",
             "-e", "TIMEOUT=40", "-e", f"DETECTOR={detector}", MONITOR,
@@ -78,7 +95,7 @@ def run_case(channel_id: str, run_id: str, detector: str = "d3") -> MonitorRun:
                               detail={"reason": "monitor not ready"})
 
         # 3. run the subject (a channel or clean_noop) against the shared volume
-        proc = _run([
+        proc = _run_checked([
             "docker", "run", "--rm", *PRIV_CHANNELS.get(channel_id, []),
             "-v", f"{app}:/app", "-v", f"{ctl}:/ctl", SUBJECT, channel_id,
         ])

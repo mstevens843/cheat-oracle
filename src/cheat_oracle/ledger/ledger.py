@@ -44,15 +44,31 @@ class Ledger:
         """Recompute the chain from disk. Returns (ok, first_broken_index or -1)."""
         head = GENESIS
         idx = -1
-        with path.open(encoding="utf-8") as fh:
-            for idx, raw in enumerate(fh):
-                entry = json.loads(raw)
-                if entry.get("prev") != head:
-                    return (False, idx)
-                expect = chain(head, entry["record"])
-                if entry.get("hash") != expect:
-                    return (False, idx)
-                # cross-check the record canonicalizes to what was hashed
-                canonicalize(entry["record"])
-                head = expect
+        try:
+            with path.open(encoding="utf-8") as fh:
+                for idx, raw in enumerate(fh):
+                    try:
+                        entry = json.loads(raw)
+                    except json.JSONDecodeError:
+                        return (False, idx)
+                    if not isinstance(entry, dict):
+                        return (False, idx)
+                    if entry.get("i") != idx:
+                        return (False, idx)
+                    record = entry.get("record")
+                    if not isinstance(record, dict):
+                        return (False, idx)
+                    if entry.get("prev") != head:
+                        return (False, idx)
+                    try:
+                        expect = chain(head, record)
+                        # cross-check the record canonicalizes to what was hashed
+                        canonicalize(record)
+                    except ValueError:
+                        return (False, idx)
+                    if entry.get("hash") != expect:
+                        return (False, idx)
+                    head = expect
+        except OSError:
+            return (False, 0)
         return (True, -1)

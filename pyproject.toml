@@ -1,17 +1,12 @@
 [project]
 name = "cheat-oracle"
 version = "0.0.0"
-description = "An in-container answer-key detector is a detector the subject can reach. cheat-oracle models, measures, and closes the resulting undercount, and states the channel even the fix cannot close."
+description = "An in-container answer-key detector is a detector the subject can reach. cheat-oracle models, measures, closes the reachable-channel undercount, and states the floor even the fix cannot close."
 readme = "README.md"
 license = { text = "MIT" }
 authors = [{ name = "Mathew Stevens" }]
 requires-python = ">=3.12,<3.14"
 dependencies = []
-
-[project.optional-dependencies]
-# Runtime signing for tamper-evident receipts. Kept optional so the model layer and its tests
-# have zero third-party dependencies, exactly as tests/test_contract.py asserts.
-ledger = ["pynacl>=1.5"]
 
 [dependency-groups]
 dev = ["pytest>=8.3", "ruff>=0.6", "mypy>=1.11"]

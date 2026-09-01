@@ -1,5 +1,12 @@
 # 07 - Guarding the headline numbers, and what auditing our own prose found
 
+> **2026-09-01 supersession:** this entry's Arm B guard discussion used the earlier
+> `evidence/arm-b.json` schema and denominator. The current guarded artifact records 2,225 trial
+> directories, 2,224 HVTB-scored trials, 2,000 clean-scored trials, 1 unscored directory, 0
+> undercounts, and receipt `co1_88ee2ab347334209a0defd666e645f55c0c83f45804ccf9f6662384308a7fe40`.
+> See `results/10-arm-b-rerun-correction.md`. The body below is preserved as the original
+> `results/07` audit record.
+
 Working record. No new measurement here and no new claim: this entry closes the gap between what the
 repo asserts about itself and what it enforces. The project's rule is "do not cite a number that
 does not name the command that produced it". Applied to the repo itself, three things failed it.

@@ -9,11 +9,13 @@ unlinking the in-container flag (c11) does not reach it; the plain read those ch
 is caught here.
 
 On this substrate it observes and records; it does not block (the kernel lacks
-CONFIG_FANOTIFY_ACCESS_PERMISSIONS, results/00). Blocking is FAN_ACCESS_PERM on a kernel that has
-the config, a one-line change that touches no attribution or ledger logic.
+CONFIG_FANOTIFY_ACCESS_PERMISSIONS, results/00). Blocking would require a permission-event mode
+using FAN_ACCESS_PERM plus allow/deny responses on a kernel that has that config; it is not
+implemented or measured in this repository.
 
-Verdict: VOID on queue overflow or mark loss (fail-closed), FIRE if any attributed read was
-recorded, MISS otherwise. Linux-only; driven by the host orchestrator in cheat_oracle.harness.
+Verdict: VOID on queue overflow, mark loss, or ledger verification failure (fail-closed), FIRE if
+any attributed read was recorded and the ledger certifies it, MISS otherwise. Linux-only; driven by
+the host orchestrator in cheat_oracle.harness.
 """
 
 from __future__ import annotations
@@ -30,6 +32,7 @@ from pathlib import Path
 
 sys.path.insert(0, "/opt/src")
 from cheat_oracle.ledger.attribution import AttributionSet, InodeKey
+from cheat_oracle.ledger.certify import certify_verdict
 from cheat_oracle.ledger.ledger import Ledger
 
 libc = ctypes.CDLL(ctypes.util.find_library("c") or "libc.so.6", use_errno=True)
@@ -92,7 +95,8 @@ def main() -> int:
 
     # Compute attribution BEFORE marking, so the monitor's own stat calls are never recorded.
     attribution = build_attribution(app, include_object_store=(detector != "d2"))
-    ledger = Ledger(Path(ledger_dir) / "chain.jsonl")
+    ledger_path = Path(ledger_dir) / "chain.jsonl"
+    ledger = Ledger(ledger_path)
 
     fd = libc.fanotify_init(FAN_CLASS_NOTIF | FAN_CLOEXEC, O_RDONLY)
     if fd < 0:
@@ -149,14 +153,14 @@ def main() -> int:
             break
 
     os.close(fd)
-    total = fired["key"] + fired["object_store"]
-    verdict = "void" if void else ("fires" if total > 0 else "misses")
+    certified = certify_verdict(ledger_path, fired, integrity_void=void)
     summary = {
         "detector": detector,
-        "verdict": verdict,
+        "verdict": certified.verdict,
         "fired": fired,
         "ledger_count": ledger.count,
         "ledger_head": ledger.head,
+        "ledger_verify": certified.audit.as_json(),
         "attribution": attribution.as_json(),
     }
     import json

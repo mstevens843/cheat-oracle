@@ -60,6 +60,12 @@ def collect() -> dict[str, dict[str, object]]:
             "d3_status": "OK" if r3.sidecar in ("fires", "misses", "void") else "OTHER",
             "d2_fired": r2.detail.get("fired") if isinstance(r2.detail, dict) else None,
             "d3_fired": r3.detail.get("fired") if isinstance(r3.detail, dict) else None,
+            "d2_ledger_verify": (
+                r2.detail.get("ledger_verify") if isinstance(r2.detail, dict) else None
+            ),
+            "d3_ledger_verify": (
+                r3.detail.get("ledger_verify") if isinstance(r3.detail, dict) else None
+            ),
         }
     return observed
 
@@ -162,12 +168,25 @@ def render(observed: dict[str, dict[str, object]], analysis: dict[str, object]) 
 
 
 def main() -> int:
-    observed = collect()
+    try:
+        observed = collect()
+    except monitor_run.DockerCommandError as exc:
+        print(f"full matrix failed before evidence was written: {exc}")
+        return 1
     analysis = analyze(observed)
-    record: dict[str, object] = {"observed": observed, "analysis": analysis}
-    record["receipt"] = receipt(record)
     text = render(observed, analysis)
     print(text)
+    bad = [
+        f"{cid}/{det}"
+        for cid, row in observed.items()
+        for det in ("d0", "d1", "d2", "d3")
+        if row.get(f"{det}_status") == "OTHER"
+    ]
+    if bad:
+        print(f"\nnot writing evidence: detector runs failed or returned no verdict: {bad}")
+        return 1
+    record: dict[str, object] = {"observed": observed, "analysis": analysis}
+    record["receipt"] = receipt(record)
     out = Path(__file__).resolve().parents[3] / "evidence" / "observed-matrix.json"
     out.write_text(json.dumps(record, indent=2, sort_keys=True))
     print(f"\nreceipt: {record['receipt']}\nwrote {out}")

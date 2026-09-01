@@ -9,7 +9,7 @@
 #
 # WHERE THE IDS COME FROM, AND WHAT IS STILL AN EXTERNAL DEPENDENCY.
 #   - Recovered verbatim from the executed-command log of the 2026-08-27 download session, then
-#     each one re-checked live on 2026-08-28 with `harbor hub job download`'s sibling
+#     each one re-checked live on 2026-08-28 and again on 2026-09-01 with `harbor hub job download`'s sibling
 #     `harbor hub job show <id> --json`: 25 of 25 resolved, every `name` matched the job directory
 #     name recorded in evidence/arm-b.json, every `n_planned_trials` was 89.
 #   - `harbor hub job list` CANNOT find these jobs. On an authenticated account it returns an empty
@@ -36,7 +36,10 @@ set -euo pipefail
 EXPECTED_JOBS=25
 EXPECTED_TRIALS_PER_JOB=89
 EXPECTED_TRIALS=2225
-EXPECTED_CLEAN=2001
+EXPECTED_SCORED_TRIALS=2224
+EXPECTED_DETECTED=224
+EXPECTED_CLEAN=2000
+EXPECTED_UNSCORED=1
 DATASET="hack-verifiable-environments/hv-terminal-bench-2-1"
 
 # <job-id> <job-name>. Names are the directory names that appear in evidence/arm-b.json's per-trial
@@ -136,6 +139,13 @@ print(j.get("name") or j.get("job_name") or "UNRESOLVED",
     exit 1
   fi
   echo "All $EXPECTED_JOBS pinned IDs resolve to the expected job name and $EXPECTED_TRIALS_PER_JOB trials."
+  if [ "$sum_trials" != "$EXPECTED_SCORED_TRIALS" ] || [ "$sum_hidden" != "$EXPECTED_DETECTED" ]; then
+    echo
+    echo "MISMATCH: Harbor metrics changed from the recorded Arm B split."
+    echo "  scored trials: got $sum_trials expected $EXPECTED_SCORED_TRIALS"
+    echo "  detected:      got $sum_hidden expected $EXPECTED_DETECTED"
+    exit 1
+  fi
   echo
   echo "Independent corroboration of the Arm B split, from HVTB's own published per-job metrics"
   echo "(summed rate x n_trials over the eval rows; this repo's scanner is not involved):"
@@ -144,8 +154,9 @@ print(j.get("name") or j.get("job_name") or "UNRESOLVED",
   echo "  => scored clean by HVTB          : $((sum_trials - sum_hidden))"
   echo "  trials with task reward = 1      : $sum_reward"
   echo
-  echo "evidence/arm-b.json reports $EXPECTED_TRIALS trial dirs and $EXPECTED_CLEAN scored clean, so it"
-  echo "implies $((EXPECTED_TRIALS - EXPECTED_CLEAN)) detected - compare with hidden_solution above."
+  echo "evidence/arm-b.json reports $EXPECTED_TRIALS trial dirs, $EXPECTED_SCORED_TRIALS scored,"
+  echo "$EXPECTED_CLEAN scored clean, and $EXPECTED_UNSCORED unscored, so it implies"
+  echo "$((EXPECTED_SCORED_TRIALS - EXPECTED_CLEAN)) detected among scored trials - compare above."
   echo "Note the scanner reads one more trial DIRECTORY than Harbor has an eval row for."
   echo "Scoring the same corpus by task reward instead would call about"
   echo "$((sum_trials - sum_reward)) trials clean, not $EXPECTED_CLEAN, which is why the published"
@@ -207,8 +218,8 @@ Complete. Re-derive the Arm B result with:
     --traces $OUT --key-path admin/ --score-field hidden_solution \\
     --out evidence/arm-b.json
 
-Expected: 2225 trials, 2001 clean, 38 with no parsed commands, 0 undercounts, receipt
-co1_3a95af4390209b8ef4ed31f2bc951ae443fcdf0428629af0d2b9a77420ee12a6
+Expected: 2225 trials, 2224 scored, 2000 clean, 1 unscored, 38 with no parsed commands,
+0 undercounts, receipt co1_88ee2ab347334209a0defd666e645f55c0c83f45804ccf9f6662384308a7fe40
 
 Note: the receipt covers traces_dir, so re-running into a DIFFERENT output directory changes it.
 Use the path above to reproduce the published receipt exactly.
