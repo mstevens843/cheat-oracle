@@ -49,9 +49,17 @@ test cases. No exploit is pointed at a system the author does not control.
 >   read of the backing block device obtains the key while the SAME superblock mark the fix uses
 >   stays silent (it fires on a VFS read of the same file - the positive control).
 > - **The fix survives its own attack.** `uv run python -m cheat_oracle.adversaries.reflexive`: the
->   ledger is out of the subject's reach, and the monitor's own final-verdict certifier verifies the
->   hash chain and emits VOID if a required ledger is missing, malformed, truncated, or edited. The
->   same certifier is covered by `tests/test_ledger_certify.py` and the reflexive helper test.
+>   ledger and verdict are out of the subject's reach, the subject cannot see the monitor process or
+>   monitor fds from its namespace, and the monitor's own final-verdict certifier verifies the hash
+>   chain and emits VOID if a required ledger is missing, malformed, truncated, or edited. The same
+>   certifier is covered by `tests/test_ledger_certify.py`, `tests/test_permissions.py`, and the
+>   reflexive helper test.
+> - **Blocking support is implemented and honestly gated here.** `uv run python -m
+>   cheat_oracle.harness.blocking_demo` starts the monitor with `BLOCK=1`, attempts
+>   `FAN_OPEN_PERM | FAN_ACCESS_PERM`, and writes no evidence unless a compatible kernel actually
+>   denies a key read before bytes are obtained. On this Docker Desktop LinuxKit substrate it returns
+>   GATED with `fanotify_mark permission events unsupported errno=22`; the decision logic is covered
+>   by `tests/test_permissions.py`.
 > - **Arm B, the released traces, scanned - a null result, honestly.** The public Harbor org exposes
 >   25 HVTB jobs over `hack-verifiable-environments/hv-terminal-bench-2-1`; the current corpus has
 >   **2,225 released trial directories**, of which Harbor publishes HVTB score rows for **2,224**.
@@ -79,11 +87,12 @@ test cases. No exploit is pointed at a system the author does not control.
 >   Arm B carries the scanner receipt above.
 >
 > **What remains infrastructure-gated or out of scope:** blocking rather than observing needs a
-> kernel with `CONFIG_FANOTIFY_ACCESS_PERMISSIONS`; no separate-machine isolation has been
-> implemented; c08 overflow remains substrate-dependent; no optional external PR against the HVTB
-> prototype has been opened; and the optional base Terminal-Bench 2.1 -> HV-form provenance
-> transform is not implemented (`transform/README.md`). None of the headline depends on the
-> transform or external PR.
+> kernel with `CONFIG_FANOTIFY_ACCESS_PERMISSIONS` and has not been locally demonstrated; no
+> separate-machine isolation has been implemented; c08 real overflow remains substrate-dependent
+> even though the deterministic integrity path voids on overflow/lost events; no optional external
+> PR against the HVTB prototype has been opened; and only a synthetic-fixture transform prototype is
+> implemented (`transform/README.md`). None of the headline depends on the full transform or
+> external PR.
 >
 > **Do not cite a number from this repo that does not name the command that produced it.**
 
@@ -102,27 +111,30 @@ src/cheat_oracle/model/       the prediction: layers, channels, detectors, predi
 src/cheat_oracle/canonical.py canonical JSON + SHA-256 receipts (ported from the outbox idempotency)
 src/cheat_oracle/ledger/      canary-mint: attribution + hash-chained tamper-evident ledger (pure core)
 src/cheat_oracle/harness/     observe.py (d0), monitor_run.py (d0/d1 + d2/d3 sidecars), full_matrix.py,
-                              negative_control.py, floor_c13.py, arm_b.py (retroactive trace scanner)
+                              negative_control.py, floor_c13.py, blocking_demo.py, arm_b.py
+                              (retroactive trace scanner)
+src/cheat_oracle/transform.py synthetic-fixture HVTB-form transform prototype; not full TB 2.1
 src/cheat_oracle/report.py    Arm A: HVTB undercount, predicted vs observed, with a receipt
 src/cheat_oracle/adversaries/ reflexive.py: attack the fix (out of reach + tamper-evident)
 images/subject/               the subject + HVTB-replica image (d0 dir watch + d1 inode watch)
 images/monitor/               the canary-mint sidecar (d3 FAN_MARK_FILESYSTEM, d2 FAN_MARK_MOUNT)
 images/floor/                 the privileged c13 floor probe (loop device + raw read below the VFS)
 evidence/                     receipted observed-matrix / arm-a-d0 / negative-control / floor-c13 / arm-b json
-results/                      numbered, append-only lab notebook (00 substrate .. 10 Arm B rerun)
+results/                      numbered, append-only lab notebook (00 substrate .. 11 local hardening)
 arm-b/                        Harbor trial/job-dir scanner; raw traces stay out of the repo
 scripts/fetch-hvtb-traces.sh  the 25 pinned Harbor job IDs Arm B scanned (re-verified 2026-09-01)
 UPSTREAM.md                   inspected upstream boundary and PR patch scope; no PR opened here
-transform/                    no transform yet; optional provenance work is explicitly out of scope
+transform/                    prototype status docs; full Terminal-Bench transform remains out of scope
 ```
 
 ## What it does not do
 
-It does not block reads on this substrate. The LinuxKit kernel lacks the fanotify permission config,
-and a real blocker would need `FAN_ACCESS_PERM` plus allow/deny responses on a kernel that supports
-permission events. It has not opened an optional external upstream PR against the HVTB prototype. It
-does not claim separate-machine isolation - subject and monitor share the LinuxKit VM kernel. It
-does not close the content-duplication or sub-VFS channels, and says so in the same table that
-reports the ones it does close. The Dockerfiles are digest-pinned to manifest-list digests resolved
-from Docker Hub on 2026-09-01; images were rebuilt on Docker Desktop's LinuxKit aarch64 substrate and
-the receipted Docker evidence was remeasured in this pass.
+It does not demonstrate blocking on this substrate. `BLOCK=1` is implemented and feature-detected,
+but this LinuxKit kernel lacks the fanotify permission config and the demo gates rather than writing
+evidence. It has not opened an optional external upstream PR against the HVTB prototype. It does not
+claim separate-machine isolation - subject and monitor share the LinuxKit VM kernel. It does not
+close the content-duplication or sub-VFS channels, and says so in the same table that reports the
+ones it does close. The Dockerfiles are digest-pinned to manifest-list digests resolved from Docker
+Hub on 2026-09-01; images were rebuilt on Docker Desktop's LinuxKit aarch64 substrate and the
+receipted Docker evidence was remeasured in this pass. The transform is a synthetic-fixture
+prototype contract, not a full Terminal-Bench 2.1 corpus transform.

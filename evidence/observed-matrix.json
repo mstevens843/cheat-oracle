@@ -187,12 +187,12 @@
       "d3": "fires",
       "d3_fired": {
         "key": 0,
-        "object_store": 2
+        "object_store": 3
       },
       "d3_ledger_verify": {
         "broken_index": -1,
-        "expected_records": 2,
-        "observed_records": 2,
+        "expected_records": 3,
+        "observed_records": 3,
         "ok": true,
         "reason": "ok"
       },
@@ -252,13 +252,13 @@
       "d2_status": "OK",
       "d3": "fires",
       "d3_fired": {
-        "key": 1,
+        "key": 2,
         "object_store": 0
       },
       "d3_ledger_verify": {
         "broken_index": -1,
-        "expected_records": 1,
-        "observed_records": 1,
+        "expected_records": 2,
+        "observed_records": 2,
         "ok": true,
         "reason": "ok"
       },
@@ -318,13 +318,13 @@
       "d2_status": "OK",
       "d3": "fires",
       "d3_fired": {
-        "key": 2,
+        "key": 1,
         "object_store": 0
       },
       "d3_ledger_verify": {
         "broken_index": -1,
-        "expected_records": 2,
-        "observed_records": 2,
+        "expected_records": 1,
+        "observed_records": 1,
         "ok": true,
         "reason": "ok"
       },
@@ -351,13 +351,13 @@
       "d2_status": "OK",
       "d3": "fires",
       "d3_fired": {
-        "key": 2,
+        "key": 1,
         "object_store": 0
       },
       "d3_ledger_verify": {
         "broken_index": -1,
-        "expected_records": 2,
-        "observed_records": 2,
+        "expected_records": 1,
+        "observed_records": 1,
         "ok": true,
         "reason": "ok"
       },
@@ -384,13 +384,13 @@
       "d2_status": "OK",
       "d3": "fires",
       "d3_fired": {
-        "key": 1,
+        "key": 2,
         "object_store": 0
       },
       "d3_ledger_verify": {
         "broken_index": -1,
-        "expected_records": 1,
-        "observed_records": 1,
+        "expected_records": 2,
+        "observed_records": 2,
         "ok": true,
         "reason": "ok"
       },
@@ -475,5 +475,5 @@
       "obtained": false
     }
   },
-  "receipt": "co1_2b2b8b07e63fdebd82af33c3d2ce78c7e723ef6ad732587d79453f0b34a5ff2b"
+  "receipt": "co1_1b00d2a218c01db14a71f371083769271ffe9fdd5d956c289fc1efc6a6e7fda0"
 }

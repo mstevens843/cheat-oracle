@@ -37,6 +37,7 @@ class DockerCommandError(RuntimeError):
 class MonitorRun:
     channel_id: str
     detector: str                       # d2 | d3
+    mode: str                           # observe | block
     d0: str | None                      # obtained-gated verdict for the matrix (fires|misses|None)
     d1: str | None
     sidecar: str | None                 # the d2/d3 verdict: fires | misses | void | error | None
@@ -65,8 +66,18 @@ def _vol_rm(name: str) -> None:
     _run(["docker", "volume", "rm", "-f", name])
 
 
-def run_case(channel_id: str, run_id: str, detector: str = "d3") -> MonitorRun:
-    sfx = f"{channel_id}-{detector}-{run_id}"
+def _extract_sidecar(logs: str) -> tuple[str | None, dict[str, object]]:
+    sidecar, detail = None, {}
+    for line in logs.splitlines():
+        if line.startswith("D3_RESULT "):
+            detail = json.loads(line[len("D3_RESULT ") :])
+            sidecar = str(detail.get("verdict"))
+    return sidecar, detail
+
+
+def run_case(channel_id: str, run_id: str, detector: str = "d3", block: bool = False) -> MonitorRun:
+    mode = "block" if block else "observe"
+    sfx = f"{channel_id}-{detector}-{mode}-{run_id}"
     app, ctl, led = f"co-app-{sfx}", f"co-ctl-{sfx}", f"co-led-{sfx}"
     mon = f"co-mon-{sfx}"
     for v in (app, ctl, led):
@@ -81,17 +92,27 @@ def run_case(channel_id: str, run_id: str, detector: str = "d3") -> MonitorRun:
         _run_checked([
             "docker", "run", "-d", "--name", mon, "--privileged",
             "-v", f"{app}:/app:ro", "-v", f"{ctl}:/ctl", "-v", f"{led}:/ledger",
-            "-e", "TIMEOUT=40", "-e", f"DETECTOR={detector}", MONITOR,
+            "-e", "TIMEOUT=40", "-e", f"DETECTOR={detector}",
+            *([] if not block else ["-e", "BLOCK=1"]),
+            MONITOR,
         ])
         ready = False
+        early_sidecar: str | None = None
+        early_detail: dict[str, object] = {}
         for _ in range(80):
             logs = _run(["docker", "logs", mon]).stdout
-            if "MON_READY" in logs or "D3_RESULT" in logs:
+            early_sidecar, early_detail = _extract_sidecar(logs)
+            if "MON_READY" in logs:
                 ready = True
                 break
+            if early_sidecar in {"gated", "error"}:
+                return MonitorRun(
+                    channel_id, detector, mode, None, None, early_sidecar, False,
+                    detail=early_detail,
+                )
             subprocess.run(["sleep", "0.25"], check=False)
         if not ready:
-            return MonitorRun(channel_id, detector, None, None, "error", False,
+            return MonitorRun(channel_id, detector, mode, None, None, "error", False,
                               detail={"reason": "monitor not ready"})
 
         # 3. run the subject (a channel or clean_noop) against the shared volume
@@ -113,12 +134,9 @@ def run_case(channel_id: str, run_id: str, detector: str = "d3") -> MonitorRun:
         # 4. wait for the monitor to finish and read its verdict
         _run(["docker", "wait", mon])
         mlogs = _run(["docker", "logs", mon]).stdout
-        sidecar, detail = None, {}
-        for line in mlogs.splitlines():
-            if line.startswith("D3_RESULT "):
-                detail = json.loads(line[len("D3_RESULT ") :])
-                sidecar = str(detail.get("verdict"))
-        return MonitorRun(channel_id, detector, d0, d1, sidecar, obtained,
+        sidecar, detail = _extract_sidecar(mlogs)
+        detail["subject_result"] = raw
+        return MonitorRun(channel_id, detector, mode, d0, d1, sidecar, obtained,
                           d0_flagged=d0f, d1_flagged=d1f, detail=detail)
     finally:
         _run(["docker", "rm", "-f", mon])

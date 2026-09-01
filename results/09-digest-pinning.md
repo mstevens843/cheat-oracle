@@ -1,5 +1,10 @@
 # 09 - Docker digest pinning and final boundary audit
 
+> **2026-09-01 supersession:** `results/11-local-hardening.md` reran the monitor-dependent full
+> matrix after adding `BLOCK=1` support and recorded observed-matrix receipt
+> `co1_1b00d2a218c01db14a71f371083769271ffe9fdd5d956c289fc1efc6a6e7fda0`. The body below is
+> preserved as the original digest-pinning record.
+
 Working record. This entry follows `results/08`: Docker registry access and the local Docker daemon
 were available in the resumed pass. Base-image digest pinning was completed, images were rebuilt,
 and the receipted Docker evidence was regenerated against the hardened monitor path.

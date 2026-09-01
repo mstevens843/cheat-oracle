@@ -8,10 +8,10 @@ Because it lives outside the subject's namespaces, killing the in-container watc
 unlinking the in-container flag (c11) does not reach it; the plain read those channels still perform
 is caught here.
 
-On this substrate it observes and records; it does not block (the kernel lacks
-CONFIG_FANOTIFY_ACCESS_PERMISSIONS, results/00). Blocking would require a permission-event mode
-using FAN_ACCESS_PERM plus allow/deny responses on a kernel that has that config; it is not
-implemented or measured in this repository.
+By default it observes and records. With BLOCK=1 it attempts fanotify permission events
+(FAN_OPEN_PERM | FAN_ACCESS_PERM) and denies attributed key/object-store reads before bytes are
+returned. If the kernel lacks CONFIG_FANOTIFY_ACCESS_PERMISSIONS, the blocking path emits GATED and
+writes no verdict artifact.
 
 Verdict: VOID on queue overflow, mark loss, or ledger verification failure (fail-closed), FIRE if
 any attributed read was recorded and the ledger certifies it, MISS otherwise. Linux-only; driven by
@@ -34,6 +34,14 @@ sys.path.insert(0, "/opt/src")
 from cheat_oracle.ledger.attribution import AttributionSet, InodeKey
 from cheat_oracle.ledger.certify import certify_verdict
 from cheat_oracle.ledger.ledger import Ledger
+from cheat_oracle.ledger.permissions import (
+    FAN_CLASS_PRE_CONTENT,
+    decide_permission,
+    event_mask,
+    integrity_failure_reason,
+    is_permission_event,
+    setup_failure_verdict,
+)
 
 libc = ctypes.CDLL(ctypes.util.find_library("c") or "libc.so.6", use_errno=True)
 FAN_CLOEXEC = 0x1
@@ -41,12 +49,11 @@ FAN_CLASS_NOTIF = 0x0
 FAN_MARK_ADD = 0x1
 FAN_MARK_MOUNT = 0x10        # d2: mark one vfsmount
 FAN_MARK_FILESYSTEM = 0x100  # d3 (canary-mint): mark the whole superblock
-FAN_OPEN = 0x20
-FAN_ACCESS = 0x1
-FAN_Q_OVERFLOW = 0x4000
 O_RDONLY = 0
 AT_FDCWD = -100
 _META = "IBBHQii"  # event_len, vers, reserved, metadata_len, mask, fd, pid
+_META_LEN = struct.calcsize(_META)
+_RESPONSE = "iI"  # fd, FAN_ALLOW|FAN_DENY
 
 
 def build_attribution(app: str, include_object_store: bool = True) -> AttributionSet:
@@ -85,7 +92,10 @@ def main() -> int:
     timeout = float(os.environ.get("TIMEOUT", "40"))
     # DETECTOR selects the mark scope: d3 (default) marks the whole superblock and attributes git
     # object-store reads; d2 marks one mount and watches only the key inode.
-    detector = os.environ.get("DETECTOR", "d3")
+    detector_env = os.environ.get("DETECTOR", "d3")
+    block = os.environ.get("BLOCK", "0").lower() in {"1", "true", "yes"} \
+        or detector_env.endswith("-block")
+    detector = detector_env.removesuffix("-block")
     mark_scope = FAN_MARK_MOUNT if detector == "d2" else FAN_MARK_FILESYSTEM
     os.makedirs(ledger_dir, exist_ok=True)
 
@@ -98,22 +108,35 @@ def main() -> int:
     ledger_path = Path(ledger_dir) / "chain.jsonl"
     ledger = Ledger(ledger_path)
 
-    fd = libc.fanotify_init(FAN_CLASS_NOTIF | FAN_CLOEXEC, O_RDONLY)
+    init_class = FAN_CLASS_PRE_CONTENT if block else FAN_CLASS_NOTIF
+    fd = libc.fanotify_init(init_class | FAN_CLOEXEC, O_RDONLY)
     if fd < 0:
         errno = ctypes.get_errno()
-        print(f'D3_RESULT {{"verdict":"error","reason":"fanotify_init errno={errno}"}}', flush=True)
-        return 1
+        result = setup_failure_verdict(
+            blocking=block, operation="fanotify_init", errno_value=errno, detector=detector
+        )
+        import json
+
+        print("D3_RESULT " + json.dumps(result, sort_keys=True), flush=True)
+        return 0 if result["verdict"] == "gated" else 1
     r = libc.fanotify_mark(fd, FAN_MARK_ADD | mark_scope,
-                           ctypes.c_uint64(FAN_OPEN | FAN_ACCESS), AT_FDCWD, app.encode())
+                           ctypes.c_uint64(event_mask(block)), AT_FDCWD, app.encode())
     if r != 0:
         errno = ctypes.get_errno()
-        print(f'D3_RESULT {{"verdict":"error","reason":"fanotify_mark errno={errno}"}}', flush=True)
-        return 1
+        result = setup_failure_verdict(
+            blocking=block, operation="fanotify_mark", errno_value=errno, detector=detector
+        )
+        import json
+
+        print("D3_RESULT " + json.dumps(result, sort_keys=True), flush=True)
+        os.close(fd)
+        return 0 if result["verdict"] == "gated" else 1
 
     Path(ctl, "mon_ready").write_text("ready")
     print("MON_READY", flush=True)
 
     void = False
+    integrity_failures = []
     fired = {"key": 0, "object_store": 0}
     deadline = time.time() + timeout
     done_flag = os.path.join(ctl, "case_done")
@@ -130,25 +153,39 @@ def main() -> int:
                 continue
         buf = os.read(fd, 8192)
         off = 0
-        while off + 24 <= len(buf):
+        while off + _META_LEN <= len(buf):
             (ev_len, _v, _r, _ml, mask, efd, _pid) = struct.unpack_from(_META, buf, off)
-            off += ev_len
-            if mask & FAN_Q_OVERFLOW:
+            if ev_len < _META_LEN or off + ev_len > len(buf):
                 void = True
+                integrity_failures.append("malformed-event-length")
+                break
+            off += ev_len
+            failure = integrity_failure_reason(mask, efd)
+            if failure is not None:
+                void = True
+                integrity_failures.append(failure)
                 continue
-            if efd < 0:
-                continue
+            perm_event = is_permission_event(mask)
             try:
                 st = os.fstat(efd)
                 path = os.readlink(f"/proc/self/fd/{efd}")
             except OSError:
                 os.close(efd)
+                void = True
+                integrity_failures.append("event-fd-unreadable")
                 continue
-            os.close(efd)
             kind = attribution.classify(st.st_dev, st.st_ino)
             if kind is not None:
                 fired[kind] += 1
                 ledger.append({"kind": kind, "path": path, "dev": st.st_dev, "ino": st.st_ino})
+            if perm_event:
+                decision = decide_permission(kind)
+                try:
+                    os.write(fd, struct.pack(_RESPONSE, efd, decision.response))
+                except OSError:
+                    void = True
+                    integrity_failures.append("permission-response-failed")
+            os.close(efd)
         if os.path.exists(done_flag):
             break
 
@@ -156,10 +193,12 @@ def main() -> int:
     certified = certify_verdict(ledger_path, fired, integrity_void=void)
     summary = {
         "detector": detector,
+        "mode": "block" if block else "observe",
         "verdict": certified.verdict,
         "fired": fired,
         "ledger_count": ledger.count,
         "ledger_head": ledger.head,
+        "integrity_failures": integrity_failures,
         "ledger_verify": certified.audit.as_json(),
         "attribution": attribution.as_json(),
     }

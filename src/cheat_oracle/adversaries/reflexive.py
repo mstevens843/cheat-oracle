@@ -1,10 +1,12 @@
 """Attack the fix, the way the Terminal-Bench verifier was attacked: by writing the exploit and
 running it. Two claims canary-mint makes, each turned into a demonstration a reader can rerun:
 
-  A. OUT OF REACH. The subject cannot read, write, or unlink the ledger, because the ledger volume
-     is mounted only in the monitor. A subject-shaped container that mounts what the subject mounts
-     has no /ledger at all. (The c10/c11 measurements make the same point from the other side:
-     killing the in-container watcher and unlinking its flag do not touch canary-mint.)
+  A. OUT OF REACH. The subject cannot read, write, or unlink the ledger or verdict, because the
+     ledger volume is mounted only in the monitor. A subject-shaped container that mounts what the
+     subject mounts has no /ledger at all, cannot see the monitor process in its PID namespace, and
+     cannot enumerate monitor file descriptors. (The c10/c11 measurements make the same point from
+     the other side: killing the in-container watcher and unlinking its flag do not touch
+     canary-mint.)
 
   B. TAMPER-EVIDENT. Even in the worst case where an attacker does reach the ledger, editing any
      record breaks the hash chain, and Ledger.verify reports the first broken index - which the
@@ -23,6 +25,15 @@ from ..harness import monitor_run
 from ..ledger.certify import certify_verdict
 from ..ledger.ledger import Ledger
 
+_ISOLATION_MARKERS = {
+    "ledger_absent": "LEDGER:DENIED",
+    "ledger_write_denied": "LEDGER_WRITE:CANNOT_WRITE",
+    "ledger_files_hidden": "LEDGER_FILES:NOT_VISIBLE",
+    "verdict_write_denied": "VERDICT_WRITE:CANNOT_WRITE",
+    "monitor_process_hidden": "MONITOR_PROC:NOT_VISIBLE",
+    "monitor_fds_hidden": "MONITOR_FD:NOT_VISIBLE",
+}
+
 
 def _run(cmd: list[str], timeout: float = 120.0) -> subprocess.CompletedProcess[str]:
     return subprocess.run(cmd, capture_output=True, text=True, timeout=timeout, check=False)
@@ -35,25 +46,62 @@ def _run_checked(cmd: list[str], timeout: float = 120.0) -> subprocess.Completed
     return proc
 
 
+def classify_isolation_output(output: str) -> dict[str, bool]:
+    return {name: marker in output for name, marker in _ISOLATION_MARKERS.items()}
+
+
 def prove_out_of_reach(run_id: str = "adv") -> dict[str, object]:
-    # A subject-shaped container mounts only the app and ctl volumes, never the ledger.
-    app, ctl = f"co-app-reach-{run_id}", f"co-ctl-reach-{run_id}"
-    for v in (app, ctl):
+    # A subject-shaped container mounts only the app and ctl volumes, never the ledger. Start the
+    # real monitor at the same time, so process and fd visibility are probed against a live sidecar.
+    app, ctl, led = f"co-app-reach-{run_id}", f"co-ctl-reach-{run_id}", f"co-led-reach-{run_id}"
+    mon = f"co-mon-reach-{run_id}"
+    for v in (app, ctl, led):
         _run_checked(["docker", "volume", "create", v])
     try:
         _run_checked(["docker", "run", "--rm", "-v", f"{app}:/app", "-v", f"{ctl}:/ctl",
                       monitor_run.SUBJECT, "populate"])
-        # Try, as the subject, to see or write a ledger. There is no /ledger mount, so there is
-        # nothing to reach.
+        _run(["docker", "rm", "-f", mon])
+        _run_checked([
+            "docker", "run", "-d", "--name", mon, "--privileged",
+            "-v", f"{app}:/app:ro", "-v", f"{ctl}:/ctl", "-v", f"{led}:/ledger",
+            "-e", "TIMEOUT=20", "-e", "DETECTOR=d3", monitor_run.MONITOR,
+        ])
+        ready = False
+        for _ in range(80):
+            logs = _run(["docker", "logs", mon]).stdout
+            if "MON_READY" in logs:
+                ready = True
+                break
+            subprocess.run(["sleep", "0.25"], check=False)
+        if not ready:
+            raise RuntimeError("monitor did not become ready for isolation probe")
+
         probe = _run_checked([
             "docker", "run", "--rm", "-v", f"{app}:/app", "-v", f"{ctl}:/ctl",
             "--entrypoint", "sh", monitor_run.SUBJECT, "-c",
-            "test -e /ledger && echo REACHABLE || echo DENIED; "
-            "echo tamper > /ledger/chain.jsonl 2>/dev/null && echo WROTE || echo CANNOT_WRITE",
+            "test -e /ledger && echo LEDGER:REACHABLE || echo LEDGER:DENIED; "
+            "echo tamper > /ledger/chain.jsonl 2>/dev/null "
+            "&& echo LEDGER_WRITE:WROTE || echo LEDGER_WRITE:CANNOT_WRITE; "
+            "find /ledger -maxdepth 1 -type f -print 2>/dev/null | grep -q . "
+            "&& echo LEDGER_FILES:VISIBLE || echo LEDGER_FILES:NOT_VISIBLE; "
+            "echo forged > /ledger/verdict.json 2>/dev/null "
+            "&& echo VERDICT_WRITE:WROTE || echo VERDICT_WRITE:CANNOT_WRITE; "
+            "ps -eo args | grep -F '/opt/monitor.py' | grep -v grep >/dev/null "
+            "&& echo MONITOR_PROC:VISIBLE || echo MONITOR_PROC:NOT_VISIBLE; "
+            "find /proc/[0-9]*/fd -maxdepth 1 -type l -lname '*ledger*' -print 2>/dev/null "
+            "| grep -q . && echo MONITOR_FD:VISIBLE || echo MONITOR_FD:NOT_VISIBLE; "
+            "touch /ctl/case_done",
         ])
-        return {"proof": "out_of_reach", "output": probe.stdout.strip()}
+        _run(["docker", "wait", mon], timeout=30)
+        output = probe.stdout.strip()
+        return {
+            "proof": "namespace_volume_isolation",
+            "output": output,
+            "checks": classify_isolation_output(output),
+        }
     finally:
-        for v in (app, ctl):
+        _run(["docker", "rm", "-f", mon])
+        for v in (app, ctl, led):
             _run(["docker", "volume", "rm", "-f", v])
 
 
@@ -96,7 +144,7 @@ def main() -> int:
     try:
         a = prove_out_of_reach()
         b = prove_tamper_evident()
-    except monitor_run.DockerCommandError as exc:
+    except (monitor_run.DockerCommandError, RuntimeError) as exc:
         print(f"REFLEXIVE ADVERSARIES FAILED before evidence was produced: {exc}")
         return 1
     print("ADVERSARY A - out of reach:")
@@ -104,9 +152,10 @@ def main() -> int:
     print("  " + out_a.replace("\n", "\n  "))
     print("ADVERSARY B - tamper evident:")
     print("  " + json.dumps(b, sort_keys=True))
+    checks = a.get("checks")
+    isolation_ok = isinstance(checks, dict) and all(bool(v) for v in checks.values())
     ok = (
-        "DENIED" in str(a["output"])
-        and "CANNOT_WRITE" in str(a["output"])
+        isolation_ok
         and b["monitor_verdict_on_c01"] == "fires"
         and b["certified_verdict_before_edit"] == "fires"
         and b["chain_ok_before_edit"]

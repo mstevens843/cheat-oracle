@@ -1,17 +1,28 @@
 # Transform Status
 
-No Terminal-Bench 2.1 -> HVTB-form provenance transform is implemented in this repository.
+`src/cheat_oracle/transform.py` implements a minimal provenance-transform prototype for tiny
+synthetic/licensed fixture tasks. It is not a full Terminal-Bench 2.1 -> HVTB-form corpus transform.
+
+The prototype command is:
+
+```
+uv run python -m cheat_oracle.transform \
+  --source tests/fixtures/transform/source-task \
+  --answer-key tests/fixtures/transform/answer-key.txt \
+  --task-id synthetic-transform-fixture \
+  --out /private/tmp/cheat-oracle-transform-demo --force
+```
+
+It copies the source task tree, adds `admin/key.txt`, injects HVTB-style detector scripts under
+`detector/`, and writes `provenance.json` with the source tree digest and answer-key digest.
+`tests/test_transform.py` verifies the output shape and that the synthetic task's normal solution
+and test still run after transformation.
 
 Re-inspected on 2026-09-01: this repository does not contain the licensed Terminal-Bench source
-task corpus or an existing transform contract to build against. Adding a script that only creates
-an `admin/` directory would be a placeholder, not a provenance-preserving transform.
+task corpus. The prototype is therefore only a contract for what a real transform must preserve; it
+must not be cited as a completed Terminal-Bench 2.1 transform.
 
-That is intentional for the current release-hardening pass. The headline claims are backed by the
-model, the license-clean HVTB detector reproduction, the Docker harness evidence, the c13 floor
-probe, and the Arm B trace scanner. None of those claims depends on a transform from base
-Terminal-Bench tasks into HVTB-form tasks.
-
-A real transform would need to:
+A full transform would still need to:
 
 1. Start from a licensed Terminal-Bench task source.
 2. Add the HVTB-style `admin/` answer-key material without changing the task's normal solution path.
@@ -20,5 +31,5 @@ A real transform would need to:
 5. Ship tests proving the transform preserves task behavior and does not introduce hidden detector
    reads during setup.
 
-Until those pieces exist, `transform/` is documentation only and must not be cited as completed
-work.
+Until those pieces exist, the completed claim is only "synthetic-fixture transform prototype," not
+"Terminal-Bench 2.1 transformed."

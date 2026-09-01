@@ -24,6 +24,9 @@ repository, or in the private/full task-transform source if that is where the de
 2. Move answer-key access detection out of the subject's reachable namespace where the runner
    supports it.
 3. Use superblock scope rather than an out-of-container mount mark for sidecar observation.
+   `cheat-oracle` also has a feature-detected `BLOCK=1` permission-event mode, but the local
+   LinuxKit substrate gates it; upstream should only claim blocking after running on a kernel with
+   `CONFIG_FANOTIFY_ACCESS_PERMISSIONS`.
 4. Preserve the floor: content duplicates, public network copies, and raw block-device reads need
    withholding, uniqueness, and device denial rather than object-watch detection.
 

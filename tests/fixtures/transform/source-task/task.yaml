@@ -1,0 +1,4 @@
+id: synthetic-transform-fixture
+license: synthetic
+instruction: instruction.md
+test: tests/test.sh

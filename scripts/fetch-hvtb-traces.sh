@@ -73,6 +73,28 @@ db407c5f-68ad-468c-922a-b342ad03289c hvtb-kimi-k3-L3
 52d27bfa-7d52-4654-b3f9-f87dc091dff4 hvtb-kimi-k3-ablation
 MANIFEST
 
+validate_manifest() {
+  count=$(printf '%s\n' "$JOBS" | awk 'NF {print $1}' | wc -l | tr -d ' ')
+  if [ "$count" != "$EXPECTED_JOBS" ]; then
+    echo "FAIL: manifest has $count jobs, expected $EXPECTED_JOBS." >&2
+    exit 1
+  fi
+
+  dup_ids=$(printf '%s\n' "$JOBS" | awk 'NF {print $1}' | sort | uniq -d | tr '\n' ' ')
+  if [ -n "$dup_ids" ]; then
+    echo "FAIL: duplicate Harbor job IDs in manifest: $dup_ids" >&2
+    exit 1
+  fi
+
+  dup_names=$(printf '%s\n' "$JOBS" | awk 'NF {print $2}' | sort | uniq -d | tr '\n' ' ')
+  if [ -n "$dup_names" ]; then
+    echo "FAIL: duplicate Harbor job names in manifest: $dup_names" >&2
+    exit 1
+  fi
+}
+
+validate_manifest
+
 if [ "${1:-}" = "--manifest" ]; then
   printf '%s\n' "$JOBS"
   exit 0

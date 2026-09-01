@@ -25,6 +25,7 @@ from pathlib import Path
 import pytest
 
 from cheat_oracle.canonical import receipt
+from cheat_oracle.harness import arm_b
 from cheat_oracle.model.detectors import DETECTORS_BY_ID
 from cheat_oracle.model.predict import summarize
 
@@ -55,6 +56,11 @@ def test_receipt_matches_so_the_zero_was_not_hand_edited() -> None:
     rec = _load()
     stored = rec.pop("receipt")
     assert receipt(rec) == stored, "arm-b receipt does not match its content"
+
+
+def test_verify_evidence_cli_logic_accepts_the_published_artifact() -> None:
+    assert arm_b.verify_evidence(EVIDENCE) == []
+    assert arm_b.main(["--verify-evidence", str(EVIDENCE)]) == 0
 
 
 def test_the_reported_aggregates_are_the_published_ones() -> None:

@@ -85,6 +85,11 @@ Since the draft above, the reproduction was hardened into a full, receipted meas
 - canary-mint now verifies its own ledger before certifying a verdict: if a required chain is
   missing, malformed, truncated, or edited, the final-verdict certifier returns VOID rather than a
   clean pass. This is implemented in `cheat_oracle.ledger.certify` and imported by the monitor.
+- canary-mint also has a feature-detected `BLOCK=1` mode that attempts fanotify permission events
+  and denies attributed answer-key/object-store reads. On the current Docker Desktop LinuxKit
+  substrate, that command gates with `fanotify_mark permission events unsupported errno=22` and
+  writes no evidence; a compatible kernel with `CONFIG_FANOTIFY_ACCESS_PERMISSIONS` is required for
+  an actual blocking demonstration.
 - The latest hardening is covered by the local test suite. The Docker images were rebuilt from
   digest-pinned bases and the receipted Docker evidence was regenerated on 2026-09-01.
 
@@ -92,6 +97,9 @@ Since the draft above, the reproduction was hardened into a full, receipted meas
 
 - The reproduction, the channel corpus, the hardened detector, and the measurement, all
   license-clean and runnable from the Dockerfiles in this repository.
+- A synthetic-fixture transform prototype that documents the provenance contract for adding
+  HVTB-style `admin/` material and detector wiring. It is not a full Terminal-Bench 2.1 corpus
+  transform.
 - A concrete upstream patch plan. I inspected the public prototype repository
   `MajoRoth/hack-verifiable-terminal-bench-2` on 2026-09-01: it is not archived, its default branch
   is `main`, and the reward-hacking detector surface visible there is the fail-open check in

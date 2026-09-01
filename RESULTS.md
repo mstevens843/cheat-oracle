@@ -8,9 +8,10 @@ Where something is skipped, substrate-limited, or unproven, it says so and says 
 **Toolchain:** Python 3.12.13, uv 0.11.26, pytest 9.1.1, ruff 0.16.5, mypy 2.3.1
 (strict) via `uv run`, pinned by the committed `uv.lock`.
 **Engine:** Docker Desktop 29.3.1, LinuxKit kernel 6.12.76-linuxkit aarch64.
-**Empirical evidence last regenerated:** 2026-09-01, after digest-pinned image rebuilds and the
-monitor ledger-certification hardening. Arm B was redownloaded from the 25 pinned Harbor job IDs and
-rerun against `/private/tmp/cheat-oracle-hvtb-jobs`.
+**Empirical evidence last regenerated:** 2026-09-01, after digest-pinned image rebuilds, monitor
+ledger-certification hardening, and the feature-gated `BLOCK=1` monitor changes. Arm B was
+redownloaded from the 25 pinned Harbor job IDs and rerun against
+`/private/tmp/cheat-oracle-hvtb-jobs`.
 **Ground truth:** a synthetic canary GUID baked into the answer key; a channel "obtained" the key
 iff it emitted that GUID at its sink, which needs no detector to adjudicate.
 
@@ -18,7 +19,7 @@ iff it emitted that GUID at its sink, which needs no detector to adjudicate.
 
 | Gate | Result |
 |---|---|
-| Model + purity + thesis + evidence-guard tests (`uv run pytest`) | **147 passed** |
+| Model + purity + thesis + evidence-guard tests (`uv run pytest`) | **159 passed** |
 | ruff | clean |
 | mypy --strict | clean |
 | Every headline number is guarded | all five `evidence/*.json` receipts re-derived by a test, and `tests/test_guard_mutations.py` re-applies 20 hand-edits of the published numbers - each RESEALED with a valid receipt, so only the claims can catch them - and requires every one to fail |
@@ -35,7 +36,11 @@ iff it emitted that GUID at its sink, which needs no detector to adjudicate.
 | Negative control (`python -m cheat_oracle.harness.negative_control`) | **no false positive** - all four detectors score clean_noop clean |
 | Discrimination (d1 > d0, fix > d0, fix > d1, floor non-empty) | **all hold, in prediction and in measurement** |
 | Reflexive adversaries (`python -m cheat_oracle.adversaries.reflexive`) | **PASS** - ledger out of reach AND tamper-evident; the tamper proof now calls the monitor's certifier rather than a separate inference |
+| Blocking mode (`python -m cheat_oracle.harness.blocking_demo`) | implemented with `BLOCK=1`; **GATED on this LinuxKit kernel** with `fanotify_mark permission events unsupported errno=22`; no blocking evidence written |
+| Stronger isolation adversary (`python -m cheat_oracle.adversaries.reflexive`) | subject cannot see `/ledger`, cannot write ledger/verdict files, cannot see the monitor process, and cannot enumerate monitor fds; this is still namespace/volume isolation only |
 | Arm B - released HVTB traces (`python -m cheat_oracle.harness.arm_b`) | **0 of 2,000 clean-scored** among 2,224 HVTB-scored trials in a 2,225-directory public corpus show a command that obtained the key by a watch-evading route (a first transcript-grep pass reported 888; all were false positives, `results/06`; the one unscored directory is recorded in `results/10`) |
+| Arm B evidence verifier (`python -m cheat_oracle.harness.arm_b --verify-evidence evidence/arm-b.json`) | receipt, aggregates, positive control, and unscored denominator all verified locally without Harbor |
+| Transform prototype (`python -m cheat_oracle.transform ...`) | synthetic-fixture provenance transform implemented and tested; not a full Terminal-Bench 2.1 corpus transform |
 
 ## The headline, stated once
 
@@ -99,20 +104,39 @@ content-duplication channels or the sub-VFS floor, and it says so in the same ta
   exact record count before a FIRE can be emitted. Missing, malformed, edited, extra, or truncated
   records return VOID in `tests/test_ledger_certify.py`, and
   `tests/test_reflexive_certification.py` proves the reflexive tamper helper uses that same path.
+- **Blocking mode is implemented, and gates honestly here.** With `BLOCK=1`, the monitor attempts
+  `FAN_OPEN_PERM | FAN_ACCESS_PERM`, denies attributed key/object-store permission events, records
+  the denied attempt to the same ledger, and refuses to write evidence unless a compatible kernel
+  actually demonstrates denial-before-obtainment. `uv run python -m cheat_oracle.harness.blocking_demo`
+  gates on Docker Desktop LinuxKit with `fanotify_mark permission events unsupported errno=22`;
+  `tests/test_permissions.py` covers the response decision, unsupported-kernel classification, and
+  overflow/malformed-event VOID path.
+- **The local isolation adversary is stronger but still scoped.** `uv run python -m
+  cheat_oracle.adversaries.reflexive` now probes a live monitor and shows the subject-shaped
+  container cannot see `/ledger`, cannot write ledger or verdict files, cannot see `/opt/monitor.py`
+  in its PID namespace, and cannot enumerate monitor fds. That demonstrates namespace/volume
+  isolation only, not separate-machine isolation.
+- **The transform is now a prototype contract, not a completed corpus transform.** `uv run python -m
+  cheat_oracle.transform --source tests/fixtures/transform/source-task --answer-key
+  tests/fixtures/transform/answer-key.txt --task-id synthetic-transform-fixture --out
+  /private/tmp/cheat-oracle-transform-demo --force` copies a synthetic task, injects `admin/`,
+  detector scripts, and provenance metadata; `tests/test_transform.py` proves output shape and
+  preserved synthetic task behavior.
 
 ## What this does not prove
 
-- **Blocking.** canary-mint observes and records on this substrate; it does not block, because the
-  LinuxKit kernel lacks `CONFIG_FANOTIFY_ACCESS_PERMISSIONS` (results/00). The undercount is a
-  detection claim, so no headline depends on blocking. A blocking mode would need permission
-  events (`FAN_ACCESS_PERM`) and allow/deny responses on a kernel that has the config; it is not
-  implemented or measured here.
+- **Blocking demonstration.** canary-mint has a `BLOCK=1` permission-event mode, but the local
+  Docker Desktop LinuxKit kernel lacks `CONFIG_FANOTIFY_ACCESS_PERMISSIONS` (results/00), so the
+  Docker demo gates and writes no evidence. The undercount is a detection claim, so no headline
+  depends on locally demonstrated blocking.
 - **Separate-machine isolation.** The subject and the monitor share the LinuxKit VM kernel. The
   monitor is in a separate PID, mount, and user namespace and holds a ledger the subject cannot
   reach, which is what the out-of-reach and tamper adversaries demonstrate - but it is not a
   separate host.
 - **c08 overflow.** The mechanism is real (inotify(7)); this substrate would not reliably drop the
   key event on the default queue, so c08 is observed as caught and excluded from the undercount.
+  The deterministic integrity path is tested to VOID on overflow or malformed/lost events, but the
+  empirical overflow reproduction remains substrate-dependent.
 - **Arm B is a command-level lower bound, not a rerun.** Arm A proves obtainment by an emitted canary
   GUID. Arm B is different: over released trajectories it counts only commands that read the key
   through a route the model ties to a d0 miss, while HVTB's own `hidden_solution` score is clean. It
@@ -153,11 +177,18 @@ content-duplication channels or the sub-VFS floor, and it says so in the same ta
     uv run python -m cheat_oracle.harness.full_matrix      # the full 4-rung observed matrix
     uv run python -m cheat_oracle.harness.negative_control # no detector fires on benign work
     uv run python -m cheat_oracle.harness.floor_c13        # the measured raw-device floor
+    uv run python -m cheat_oracle.harness.blocking_demo    # BLOCK=1; GATED on LinuxKit
     scripts/fetch-hvtb-traces.sh /private/tmp/cheat-oracle-hvtb-jobs   # 25 pinned Harbor jobs
     uv run python -m cheat_oracle.harness.arm_b \
       --traces /private/tmp/cheat-oracle-hvtb-jobs --key-path admin/ \
       --score-field hidden_solution                    # Arm B: retroactive trace scan
+    uv run python -m cheat_oracle.harness.arm_b --verify-evidence evidence/arm-b.json
     uv run python -m cheat_oracle.adversaries.reflexive    # attack the fix
+    uv run python -m cheat_oracle.transform \
+      --source tests/fixtures/transform/source-task \
+      --answer-key tests/fixtures/transform/answer-key.txt \
+      --task-id synthetic-transform-fixture \
+      --out /private/tmp/cheat-oracle-transform-demo --force
 
 A note on the two kinds of document here. This file is the living verification record and its gate
 numbers are current as of the Frozen date above. The numbered entries in `results/` are an

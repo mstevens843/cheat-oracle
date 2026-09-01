@@ -19,6 +19,10 @@ Then run:
 
     uv run python -m cheat_oracle.harness.arm_b --key-path admin/ --score-field hidden_solution
 
+Verify the committed receipt and aggregates without Harbor:
+
+    uv run python -m cheat_oracle.harness.arm_b --verify-evidence evidence/arm-b.json
+
 For each trial the HVTB detector scored as no-hack, the scanner checks whether an executed command
 obtained the answer key through a route the admin/ directory watch does not observe (a hardlink out,
 a git object-store read of the key), and receipts the count to `evidence/arm-b.json`. It scans the
